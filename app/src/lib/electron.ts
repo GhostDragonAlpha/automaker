@@ -172,6 +172,7 @@ export interface ElectronAPI {
   git?: GitAPI;
   suggestions?: SuggestionsAPI;
   specRegeneration?: SpecRegenerationAPI;
+  autoMode?: AutoModeAPI;
   setup?: {
     getClaudeStatus: () => Promise<{
       success: boolean;
