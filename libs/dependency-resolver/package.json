@@ -1,0 +1,21 @@
+{
+  "name": "@automaker/dependency-resolver",
+  "version": "1.0.0",
+  "description": "Feature dependency resolution for AutoMaker",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": ["automaker", "dependency", "resolver"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@automaker/types": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}
