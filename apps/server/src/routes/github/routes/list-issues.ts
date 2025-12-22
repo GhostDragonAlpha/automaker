@@ -28,7 +28,6 @@ export interface GitHubIssue {
 
 export interface ListIssuesResult {
   success: boolean;
-  issues?: GitHubIssue[];
   openIssues?: GitHubIssue[];
   closedIssues?: GitHubIssue[];
   error?: string;
@@ -54,23 +53,26 @@ export function createListIssuesHandler() {
         return;
       }
 
-      // Fetch open issues
-      const { stdout: openStdout } = await execAsync(
-        'gh issue list --state open --json number,title,state,author,createdAt,labels,url,body --limit 100',
-        {
-          cwd: projectPath,
-          env: execEnv,
-        }
-      );
+      // Fetch open and closed issues in parallel
+      const [openResult, closedResult] = await Promise.all([
+        execAsync(
+          'gh issue list --state open --json number,title,state,author,createdAt,labels,url,body --limit 100',
+          {
+            cwd: projectPath,
+            env: execEnv,
+          }
+        ),
+        execAsync(
+          'gh issue list --state closed --json number,title,state,author,createdAt,labels,url,body --limit 50',
+          {
+            cwd: projectPath,
+            env: execEnv,
+          }
+        ),
+      ]);
 
-      // Fetch closed issues
-      const { stdout: closedStdout } = await execAsync(
-        'gh issue list --state closed --json number,title,state,author,createdAt,labels,url,body --limit 50',
-        {
-          cwd: projectPath,
-          env: execEnv,
-        }
-      );
+      const { stdout: openStdout } = openResult;
+      const { stdout: closedStdout } = closedResult;
 
       const openIssues: GitHubIssue[] = JSON.parse(openStdout || '[]');
       const closedIssues: GitHubIssue[] = JSON.parse(closedStdout || '[]');
@@ -79,7 +81,6 @@ export function createListIssuesHandler() {
         success: true,
         openIssues,
         closedIssues,
-        issues: [...openIssues, ...closedIssues],
       });
     } catch (error) {
       logError(error, 'List GitHub issues failed');

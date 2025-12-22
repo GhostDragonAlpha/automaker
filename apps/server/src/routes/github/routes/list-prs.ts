@@ -32,7 +32,6 @@ export interface GitHubPR {
 
 export interface ListPRsResult {
   success: boolean;
-  prs?: GitHubPR[];
   openPRs?: GitHubPR[];
   mergedPRs?: GitHubPR[];
   error?: string;
@@ -58,23 +57,24 @@ export function createListPRsHandler() {
         return;
       }
 
-      // Fetch open PRs
-      const { stdout: openStdout } = await execAsync(
-        'gh pr list --state open --json number,title,state,author,createdAt,labels,url,isDraft,headRefName,reviewDecision,mergeable,body --limit 100',
-        {
-          cwd: projectPath,
-          env: execEnv,
-        }
-      );
-
-      // Fetch merged PRs
-      const { stdout: mergedStdout } = await execAsync(
-        'gh pr list --state merged --json number,title,state,author,createdAt,labels,url,isDraft,headRefName,reviewDecision,mergeable,body --limit 50',
-        {
-          cwd: projectPath,
-          env: execEnv,
-        }
-      );
+      const [openResult, mergedResult] = await Promise.all([
+        execAsync(
+          'gh pr list --state open --json number,title,state,author,createdAt,labels,url,isDraft,headRefName,reviewDecision,mergeable,body --limit 100',
+          {
+            cwd: projectPath,
+            env: execEnv,
+          }
+        ),
+        execAsync(
+          'gh pr list --state merged --json number,title,state,author,createdAt,labels,url,isDraft,headRefName,reviewDecision,mergeable,body --limit 50',
+          {
+            cwd: projectPath,
+            env: execEnv,
+          }
+        ),
+      ]);
+      const { stdout: openStdout } = openResult;
+      const { stdout: mergedStdout } = mergedResult;
 
       const openPRs: GitHubPR[] = JSON.parse(openStdout || '[]');
       const mergedPRs: GitHubPR[] = JSON.parse(mergedStdout || '[]');
@@ -83,7 +83,6 @@ export function createListPRsHandler() {
         success: true,
         openPRs,
         mergedPRs,
-        prs: [...openPRs, ...mergedPRs],
       });
     } catch (error) {
       logError(error, 'List GitHub PRs failed');

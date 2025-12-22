@@ -146,6 +146,7 @@ describe('auto-mode-service.ts (integration)', () => {
         category: 'test',
         description: 'Test without worktree',
         status: 'pending',
+        skipTests: true,
       });
 
       const mockProvider = {
@@ -181,6 +182,7 @@ describe('auto-mode-service.ts (integration)', () => {
         category: 'ui',
         description: 'Execute this feature',
         status: 'pending',
+        skipTests: true,
       });
 
       const mockProvider = {
@@ -327,6 +329,7 @@ describe('auto-mode-service.ts (integration)', () => {
         category: 'test',
         description: 'Auto feature 1',
         status: 'pending',
+        skipTests: true,
       });
 
       await createTestFeature(testRepo.path, 'auto-2', {
@@ -334,6 +337,7 @@ describe('auto-mode-service.ts (integration)', () => {
         category: 'test',
         description: 'Auto feature 2',
         status: 'pending',
+        skipTests: true,
       });
 
       const mockProvider = {
@@ -520,6 +524,7 @@ describe('auto-mode-service.ts (integration)', () => {
         description: 'Feature with skip planning',
         status: 'pending',
         planningMode: 'skip',
+        skipTests: true,
       });
 
       const mockProvider = {
@@ -555,6 +560,7 @@ describe('auto-mode-service.ts (integration)', () => {
         status: 'pending',
         planningMode: 'lite',
         requirePlanApproval: false,
+        skipTests: true,
       });
 
       const mockProvider = {
