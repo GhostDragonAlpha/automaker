@@ -9,7 +9,15 @@ import { collectAsyncGenerator } from '../../utils/helpers.js';
 
 vi.mock('fs/promises');
 vi.mock('@/providers/provider-factory.js');
-vi.mock('@automaker/utils');
+vi.mock('@automaker/utils', async () => {
+  const actual = await vi.importActual('@automaker/utils');
+  return {
+    ...actual,
+    readImageAsBase64: vi.fn(),
+    buildPromptWithImages: vi.fn(),
+    loadContextFiles: vi.fn(),
+  };
+});
 
 describe('agent-service.ts', () => {
   let service: AgentService;

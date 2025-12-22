@@ -11,10 +11,13 @@ import {
   buildPromptWithImages,
   isAbortError,
   loadContextFiles,
+  createLogger,
 } from '@automaker/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
 import { PathNotAllowedError, secureFs } from '@automaker/platform';
+
+const logger = createLogger('AgentService');
 
 interface Message {
   id: string;
@@ -149,7 +152,7 @@ export class AgentService {
             filename: imageData.filename,
           });
         } catch (error) {
-          console.error(`[AgentService] Failed to load image ${imagePath}:`, error);
+          logger.error(`Failed to load image ${imagePath}:`, error);
         }
       }
     }
@@ -214,9 +217,7 @@ export class AgentService {
       // Get provider for this model
       const provider = ProviderFactory.getProviderForModel(effectiveModel);
 
-      console.log(
-        `[AgentService] Using provider "${provider.getName()}" for model "${effectiveModel}"`
-      );
+      logger.info(`Using provider "${provider.getName()}" for model "${effectiveModel}"`);
 
       // Build options for provider
       const options: ExecuteOptions = {
@@ -253,7 +254,7 @@ export class AgentService {
         // Capture SDK session ID from any message and persist it
         if (msg.session_id && !session.sdkSessionId) {
           session.sdkSessionId = msg.session_id;
-          console.log(`[AgentService] Captured SDK session ID: ${msg.session_id}`);
+          logger.info(`Captured SDK session ID: ${msg.session_id}`);
           // Persist the SDK session ID to ensure conversation continuity across server restarts
           await this.updateSession(sessionId, { sdkSessionId: msg.session_id });
         }
@@ -329,7 +330,7 @@ export class AgentService {
         return { success: false, aborted: true };
       }
 
-      console.error('[AgentService] Error:', error);
+      logger.error('Error:', error);
 
       session.isRunning = false;
       session.abortController = null;
@@ -423,7 +424,7 @@ export class AgentService {
       await secureFs.writeFile(sessionFile, JSON.stringify(messages, null, 2), 'utf-8');
       await this.updateSessionTimestamp(sessionId);
     } catch (error) {
-      console.error('[AgentService] Failed to save session:', error);
+      logger.error('Failed to save session:', error);
     }
   }
 

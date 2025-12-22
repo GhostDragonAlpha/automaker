@@ -57,7 +57,7 @@ export class FeatureLoader {
         try {
           // Paths are now absolute
           await secureFs.unlink(oldPath);
-          console.log(`[FeatureLoader] Deleted orphaned image: ${oldPath}`);
+          logger.info(`Deleted orphaned image: ${oldPath}`);
         } catch (error) {
           // Ignore errors when deleting (file may already be gone)
           logger.warn(`[FeatureLoader] Failed to delete image: ${oldPath}`, error);
@@ -112,7 +112,7 @@ export class FeatureLoader {
 
         // Copy the file
         await secureFs.copyFile(fullOriginalPath, newPath);
-        console.log(`[FeatureLoader] Copied image: ${originalPath} -> ${newPath}`);
+        logger.info(`Copied image: ${originalPath} -> ${newPath}`);
 
         // Try to delete the original temp file
         try {
@@ -333,7 +333,7 @@ export class FeatureLoader {
     try {
       const featureDir = this.getFeatureDir(projectPath, featureId);
       await secureFs.rm(featureDir, { recursive: true, force: true });
-      console.log(`[FeatureLoader] Deleted feature ${featureId}`);
+      logger.info(`Deleted feature ${featureId}`);
       return true;
     } catch (error) {
       logger.error(`[FeatureLoader] Failed to delete feature ${featureId}:`, error);
