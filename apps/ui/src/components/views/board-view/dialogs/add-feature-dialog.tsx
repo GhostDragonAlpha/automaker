@@ -288,23 +288,19 @@ export function AddFeatureDialog({
     onOpenChange(false);
   };
 
-  const handleAdd = () => {
-    const featureData = buildFeatureData();
-    if (!featureData) return;
-
-    onAdd(featureData);
-    resetForm();
-  };
-
-  const handleAddAndStart = () => {
-    if (!onAddAndStart) return;
+  const handleAction = (actionFn?: (data: FeatureData) => void) => {
+    if (!actionFn) return;
 
     const featureData = buildFeatureData();
     if (!featureData) return;
 
-    onAddAndStart(featureData);
+    actionFn(featureData);
     resetForm();
   };
+
+  const handleAdd = () => handleAction(onAdd);
+
+  const handleAddAndStart = () => handleAction(onAddAndStart);
 
   const handleDialogClose = (open: boolean) => {
     onOpenChange(open);
