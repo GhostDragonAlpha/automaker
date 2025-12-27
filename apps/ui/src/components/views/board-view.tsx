@@ -523,6 +523,29 @@ export function BoardView() {
     [handleAddFeature, handleStartImplementation, defaultSkipTests]
   );
 
+  // Handler for "Make" button - creates a feature and immediately starts it
+  const handleAddAndStartFeature = useCallback(
+    async (featureData: Parameters<typeof handleAddFeature>[0]) => {
+      await handleAddFeature(featureData);
+
+      // Find the newly created feature and start it
+      setTimeout(async () => {
+        const latestFeatures = useAppStore.getState().features;
+        const newFeature = latestFeatures.find(
+          (f) =>
+            f.status === 'backlog' &&
+            f.description === featureData.description &&
+            f.branchName === featureData.branchName
+        );
+
+        if (newFeature) {
+          await handleStartImplementation(newFeature);
+        }
+      }, FEATURE_CREATION_SETTLE_DELAY_MS);
+    },
+    [handleAddFeature, handleStartImplementation]
+  );
+
   // Client-side auto mode: periodically check for backlog items and move them to in-progress
   // Use a ref to track the latest auto mode state so async operations always check the current value
   const autoModeRunningRef = useRef(autoMode.isRunning);
@@ -1137,6 +1160,7 @@ export function BoardView() {
           }
         }}
         onAdd={handleAddFeature}
+        onAddAndStart={handleAddAndStartFeature}
         categorySuggestions={categorySuggestions}
         branchSuggestions={branchSuggestions}
         branchCardCounts={branchCardCounts}
