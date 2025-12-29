@@ -1141,6 +1141,8 @@ export class HttpApiClient implements ElectronAPI {
   };
 
   // MCP API - Test MCP server connections and list tools
+  // SECURITY: Only accepts serverId, not arbitrary serverConfig, to prevent
+  // drive-by command execution attacks. Servers must be saved first.
   mcp = {
     testServer: (
       serverId: string
@@ -1159,33 +1161,6 @@ export class HttpApiClient implements ElectronAPI {
         version?: string;
       };
     }> => this.post('/api/mcp/test', { serverId }),
-
-    testServerConfig: (serverConfig: {
-      id: string;
-      name: string;
-      description?: string;
-      type?: 'stdio' | 'sse' | 'http';
-      command?: string;
-      args?: string[];
-      env?: Record<string, string>;
-      url?: string;
-      headers?: Record<string, string>;
-      enabled?: boolean;
-    }): Promise<{
-      success: boolean;
-      tools?: Array<{
-        name: string;
-        description?: string;
-        inputSchema?: Record<string, unknown>;
-        enabled: boolean;
-      }>;
-      error?: string;
-      connectionTime?: number;
-      serverInfo?: {
-        name?: string;
-        version?: string;
-      };
-    }> => this.post('/api/mcp/test', { serverConfig }),
 
     listTools: (
       serverId: string

@@ -105,9 +105,13 @@ if (ENABLE_REQUEST_LOGGING) {
     })
   );
 }
+// SECURITY: Restrict CORS to localhost UI origins to prevent drive-by attacks
+// from malicious websites. MCP server endpoints can execute arbitrary commands,
+// so allowing any origin would enable RCE from any website visited while Automaker runs.
+const DEFAULT_CORS_ORIGINS = ['http://localhost:3007', 'http://127.0.0.1:3007'];
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGINS,
     credentials: true,
   })
 );

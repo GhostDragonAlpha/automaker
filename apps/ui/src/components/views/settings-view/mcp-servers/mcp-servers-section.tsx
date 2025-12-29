@@ -13,6 +13,7 @@ import {
   ImportJsonDialog,
   JsonEditDialog,
   GlobalJsonEditDialog,
+  SecurityWarningDialog,
 } from './dialogs';
 
 export function MCPServersSection() {
@@ -45,6 +46,11 @@ export function MCPServersSection() {
     globalJsonValue,
     setGlobalJsonValue,
 
+    // Security warning dialog state
+    isSecurityWarningOpen,
+    setIsSecurityWarningOpen,
+    pendingServerData,
+
     // UI state
     isRefreshing,
     serverTestStates,
@@ -70,6 +76,7 @@ export function MCPServersSection() {
     handleSaveJsonEdit,
     handleOpenGlobalJsonEdit,
     handleSaveGlobalJsonEdit,
+    handleSecurityWarningConfirm,
   } = useMCPServers();
 
   return (
@@ -186,6 +193,20 @@ export function MCPServersSection() {
           setIsGlobalJsonEditOpen(false);
           setGlobalJsonValue('');
         }}
+      />
+
+      <SecurityWarningDialog
+        open={isSecurityWarningOpen}
+        onOpenChange={setIsSecurityWarningOpen}
+        onConfirm={handleSecurityWarningConfirm}
+        serverType={pendingServerData?.serverType || 'stdio'}
+        serverName={pendingServerData?.serverData?.name || ''}
+        command={pendingServerData?.command}
+        args={pendingServerData?.args}
+        url={pendingServerData?.url}
+        importCount={
+          pendingServerData?.type === 'import' ? pendingServerData.importServers?.length : undefined
+        }
       />
     </div>
   );

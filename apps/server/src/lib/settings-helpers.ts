@@ -193,7 +193,8 @@ export async function getMCPPermissionSettings(
   settingsService?: SettingsService | null,
   logPrefix = '[SettingsHelper]'
 ): Promise<{ mcpAutoApproveTools: boolean; mcpUnrestrictedTools: boolean }> {
-  // Default values (both enabled for backwards compatibility)
+  // Default to true for autonomous workflow. Security is enforced when adding servers
+  // via the security warning dialog that explains the risks.
   const defaults = { mcpAutoApproveTools: true, mcpUnrestrictedTools: true };
 
   if (!settingsService) {

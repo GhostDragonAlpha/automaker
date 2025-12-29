@@ -40,7 +40,8 @@ export class ClaudeProvider extends BaseProvider {
     // This logic mirrors buildMcpOptions() in sdk-options.ts but is applied here since
     // the provider is the final point where SDK options are constructed.
     const hasMcpServers = options.mcpServers && Object.keys(options.mcpServers).length > 0;
-    // Default to true - deliberate design choice for ease of use. Users can disable in settings.
+    // Default to true for autonomous workflow. Security is enforced when adding servers
+    // via the security warning dialog that explains the risks.
     const mcpAutoApprove = options.mcpAutoApproveTools ?? true;
     const mcpUnrestricted = options.mcpUnrestrictedTools ?? true;
     const defaultTools = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash', 'WebSearch', 'WebFetch'];

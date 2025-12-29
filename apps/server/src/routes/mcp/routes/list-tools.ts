@@ -4,21 +4,22 @@
  * Lists available tools for an MCP server.
  * Similar to test but focused on tool discovery.
  *
+ * SECURITY: Only accepts serverId to look up saved configs. Does NOT accept
+ * arbitrary serverConfig to prevent drive-by command execution attacks.
+ * Users must explicitly save a server config through the UI before testing.
+ *
  * Request body:
  *   { serverId: string } - Get tools by server ID from settings
- *   OR { serverConfig: MCPServerConfig } - Get tools with provided config
  *
  * Response: { success: boolean, tools?: MCPToolInfo[], error?: string }
  */
 
 import type { Request, Response } from 'express';
 import type { MCPTestService } from '../../../services/mcp-test-service.js';
-import type { MCPServerConfig } from '@automaker/types';
 import { getErrorMessage, logError } from '../common.js';
 
 interface ListToolsRequest {
-  serverId?: string;
-  serverConfig?: MCPServerConfig;
+  serverId: string;
 }
 
 /**
@@ -29,18 +30,15 @@ export function createListToolsHandler(mcpTestService: MCPTestService) {
     try {
       const body = req.body as ListToolsRequest;
 
-      if (!body.serverId && !body.serverConfig) {
+      if (!body.serverId || typeof body.serverId !== 'string') {
         res.status(400).json({
           success: false,
-          error: 'Either serverId or serverConfig is required',
+          error: 'serverId is required',
         });
         return;
       }
 
-      // At this point, we know at least one of serverId or serverConfig is truthy
-      const result = body.serverId
-        ? await mcpTestService.testServerById(body.serverId)
-        : await mcpTestService.testServer(body.serverConfig!);
+      const result = await mcpTestService.testServerById(body.serverId);
 
       // Return only tool-related information
       res.json({

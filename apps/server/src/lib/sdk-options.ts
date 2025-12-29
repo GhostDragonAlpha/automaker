@@ -158,8 +158,8 @@ interface McpPermissionOptions {
  */
 function buildMcpOptions(config: CreateSdkOptionsConfig): McpPermissionOptions {
   const hasMcpServers = config.mcpServers && Object.keys(config.mcpServers).length > 0;
-  // Default to true - this is a deliberate design choice for ease of use with MCP servers.
-  // Users can disable these in settings for stricter security.
+  // Default to true for autonomous workflow. Security is enforced when adding servers
+  // via the security warning dialog that explains the risks.
   const mcpAutoApprove = config.mcpAutoApproveTools ?? true;
   const mcpUnrestricted = config.mcpUnrestrictedTools ?? true;
 

@@ -520,6 +520,8 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   autoLoadClaudeMd: false,
   enableSandboxMode: true,
   mcpServers: [],
+  // Default to true for autonomous workflow. Security is enforced when adding servers
+  // via the security warning dialog that explains the risks.
   mcpAutoApproveTools: true,
   mcpUnrestrictedTools: true,
 };

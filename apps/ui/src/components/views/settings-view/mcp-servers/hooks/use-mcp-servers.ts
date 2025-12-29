@@ -9,6 +9,17 @@ import { defaultFormData } from '../types';
 import { MAX_RECOMMENDED_TOOLS } from '../constants';
 import type { ServerType } from '../types';
 
+/** Pending server data waiting for security confirmation */
+interface PendingServerData {
+  type: 'add' | 'import';
+  serverData?: Omit<MCPServerConfig, 'id'>;
+  importServers?: Array<Omit<MCPServerConfig, 'id'>>;
+  serverType: ServerType;
+  command?: string;
+  args?: string[];
+  url?: string;
+}
+
 export function useMCPServers() {
   const {
     mcpServers,
@@ -36,6 +47,10 @@ export function useMCPServers() {
   const [isGlobalJsonEditOpen, setIsGlobalJsonEditOpen] = useState(false);
   const [globalJsonValue, setGlobalJsonValue] = useState('');
   const autoTestedServersRef = useRef<Set<string>>(new Set());
+
+  // Security warning dialog state
+  const [isSecurityWarningOpen, setIsSecurityWarningOpen] = useState(false);
+  const [pendingServerData, setPendingServerData] = useState<PendingServerData | null>(null);
 
   // Computed values
   const totalToolsCount = useMemo(() => {
@@ -140,7 +155,7 @@ export function useMCPServers() {
       } else {
         toast.error('Failed to refresh MCP servers');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error refreshing MCP servers');
     } finally {
       setIsRefreshing(false);
@@ -258,16 +273,52 @@ export function useMCPServers() {
       }
     }
 
+    // If editing an existing server, save directly (user already approved it)
     if (editingServer) {
       updateMCPServer(editingServer.id, serverData);
       toast.success('MCP server updated');
-    } else {
-      addMCPServer(serverData);
-      toast.success('MCP server added');
+      await syncSettingsToServer();
+      handleCloseDialog();
+      return;
     }
 
-    await syncSettingsToServer();
-    handleCloseDialog();
+    // For new servers, show security warning first
+    setPendingServerData({
+      type: 'add',
+      serverData,
+      serverType: formData.type,
+      command: formData.type === 'stdio' ? formData.command.trim() : undefined,
+      args:
+        formData.type === 'stdio' && formData.args.trim()
+          ? formData.args.trim().split(/\s+/)
+          : undefined,
+      url: formData.type !== 'stdio' ? formData.url.trim() : undefined,
+    });
+    setIsSecurityWarningOpen(true);
+  };
+
+  /** Called when user confirms the security warning for adding a server */
+  const handleSecurityWarningConfirm = async () => {
+    if (!pendingServerData) return;
+
+    if (pendingServerData.type === 'add' && pendingServerData.serverData) {
+      addMCPServer(pendingServerData.serverData);
+      toast.success('MCP server added');
+      await syncSettingsToServer();
+      handleCloseDialog();
+    } else if (pendingServerData.type === 'import' && pendingServerData.importServers) {
+      for (const serverData of pendingServerData.importServers) {
+        addMCPServer(serverData);
+      }
+      await syncSettingsToServer();
+      const count = pendingServerData.importServers.length;
+      toast.success(`Imported ${count} MCP server${count > 1 ? 's' : ''}`);
+      setIsImportDialogOpen(false);
+      setImportJson('');
+    }
+
+    setIsSecurityWarningOpen(false);
+    setPendingServerData(null);
   };
 
   const handleToggleEnabled = async (server: MCPServerConfig) => {
@@ -297,7 +348,7 @@ export function useMCPServers() {
         return;
       }
 
-      let addedCount = 0;
+      const serversToImport: Array<Omit<MCPServerConfig, 'id'>> = [];
       let skippedCount = 0;
 
       for (const [name, config] of Object.entries(servers)) {
@@ -323,10 +374,28 @@ export function useMCPServers() {
             skippedCount++;
             continue;
           }
-          serverData.command = serverConfig.command as string;
-          if (Array.isArray(serverConfig.args)) {
+
+          const rawCommand = serverConfig.command as string;
+
+          // Support both formats:
+          // 1. Separate command/args: { "command": "npx", "args": ["-y", "package"] }
+          // 2. Inline args (Claude Desktop format): { "command": "npx -y package" }
+          if (Array.isArray(serverConfig.args) && serverConfig.args.length > 0) {
+            // Args provided separately
+            serverData.command = rawCommand;
             serverData.args = serverConfig.args as string[];
+          } else if (rawCommand.includes(' ')) {
+            // Parse inline command string - split on spaces but preserve quoted strings
+            const parts = rawCommand.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [rawCommand];
+            serverData.command = parts[0];
+            if (parts.length > 1) {
+              // Remove quotes from args
+              serverData.args = parts.slice(1).map((arg) => arg.replace(/^["']|["']$/g, ''));
+            }
+          } else {
+            serverData.command = rawCommand;
           }
+
           if (typeof serverConfig.env === 'object' && serverConfig.env !== null) {
             serverData.env = serverConfig.env as Record<string, string>;
           }
@@ -342,26 +411,32 @@ export function useMCPServers() {
           }
         }
 
-        addMCPServer(serverData);
-        addedCount++;
+        serversToImport.push(serverData);
       }
 
-      await syncSettingsToServer();
-
-      if (addedCount > 0) {
-        toast.success(`Imported ${addedCount} MCP server${addedCount > 1 ? 's' : ''}`);
-      }
       if (skippedCount > 0) {
         toast.info(
           `Skipped ${skippedCount} server${skippedCount > 1 ? 's' : ''} (already exist or invalid)`
         );
       }
-      if (addedCount === 0 && skippedCount === 0) {
-        toast.warning('No servers found in JSON');
+
+      if (serversToImport.length === 0) {
+        toast.warning('No new servers to import');
+        return;
       }
 
-      setIsImportDialogOpen(false);
-      setImportJson('');
+      // Show security warning before importing
+      // Use the first server's type for the warning (most imports are stdio)
+      const firstServer = serversToImport[0];
+      setPendingServerData({
+        type: 'import',
+        importServers: serversToImport,
+        serverType: firstServer.type || 'stdio',
+        command: firstServer.type === 'stdio' ? firstServer.command : undefined,
+        args: firstServer.type === 'stdio' ? firstServer.args : undefined,
+        url: firstServer.type !== 'stdio' ? firstServer.url : undefined,
+      });
+      setIsSecurityWarningOpen(true);
     } catch (error) {
       toast.error('Invalid JSON: ' + (error instanceof Error ? error.message : 'Parse error'));
     }
@@ -649,6 +724,11 @@ export function useMCPServers() {
     globalJsonValue,
     setGlobalJsonValue,
 
+    // Security warning dialog state
+    isSecurityWarningOpen,
+    setIsSecurityWarningOpen,
+    pendingServerData,
+
     // UI state
     isRefreshing,
     serverTestStates,
@@ -674,5 +754,6 @@ export function useMCPServers() {
     handleSaveJsonEdit,
     handleOpenGlobalJsonEdit,
     handleSaveGlobalJsonEdit,
+    handleSecurityWarningConfirm,
   };
 }
