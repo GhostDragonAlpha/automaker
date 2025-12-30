@@ -28,7 +28,7 @@
     "postinstall": "electron-builder install-app-deps",
     "preview": "vite preview",
     "lint": "npx eslint",
-    "pretest": "node scripts/setup-e2e-fixtures.mjs",
+    "pretest": "node scripts/kill-test-servers.mjs && node scripts/setup-e2e-fixtures.mjs",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "dev:electron:wsl": "cross-env vite",
