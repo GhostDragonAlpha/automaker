@@ -9,6 +9,7 @@ import {
   FlaskConical,
   Trash2,
   Sparkles,
+  Workflow,
 } from 'lucide-react';
 import type { SettingsViewId } from '../hooks/use-settings-view';
 
@@ -23,6 +24,7 @@ export const NAV_ITEMS: NavigationItem[] = [
   { id: 'api-keys', label: 'API Keys', icon: Key },
   { id: 'providers', label: 'AI Providers', icon: Bot },
   { id: 'ai-enhancement', label: 'AI Enhancement', icon: Sparkles },
+  { id: 'phase-models', label: 'Phase Models', icon: Workflow },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'terminal', label: 'Terminal', icon: SquareTerminal },
   { id: 'keyboard', label: 'Keyboard Shortcuts', icon: Settings2 },

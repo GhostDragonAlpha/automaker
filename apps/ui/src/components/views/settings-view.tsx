@@ -9,6 +9,7 @@ import { DeleteProjectDialog } from './settings-view/components/delete-project-d
 import { SettingsNavigation } from './settings-view/components/settings-navigation';
 import { ApiKeysSection } from './settings-view/api-keys/api-keys-section';
 import { AIEnhancementSection } from './settings-view/ai-enhancement';
+import { PhaseModelsSection } from './settings-view/phase-models';
 import { AppearanceSection } from './settings-view/appearance/appearance-section';
 import { TerminalSection } from './settings-view/terminal/terminal-section';
 import { AudioSection } from './settings-view/audio/audio-section';
@@ -88,6 +89,8 @@ export function SettingsView() {
         return <ProviderTabs defaultTab={activeView === 'claude' ? 'claude' : undefined} />;
       case 'ai-enhancement':
         return <AIEnhancementSection />;
+      case 'phase-models':
+        return <PhaseModelsSection />;
       case 'appearance':
         return (
           <AppearanceSection

@@ -8,8 +8,10 @@ import type {
   PlanningMode,
   AIProfile,
   CursorModelId,
+  PhaseModelConfig,
+  PhaseModelKey,
 } from '@automaker/types';
-import { getAllCursorModelIds } from '@automaker/types';
+import { getAllCursorModelIds, DEFAULT_PHASE_MODELS } from '@automaker/types';
 
 // Re-export ThemeMode for convenience
 export type { ThemeMode };
@@ -480,6 +482,9 @@ export interface AppState {
   // Validation Model Settings
   validationModel: AgentModel; // Model used for GitHub issue validation (default: opus)
 
+  // Phase Model Settings - per-phase AI model configuration
+  phaseModels: PhaseModelConfig;
+
   // Cursor CLI Settings (global)
   enabledCursorModels: CursorModelId[]; // Which Cursor models are available in feature modal
   cursorDefaultModel: CursorModelId; // Default Cursor model selection
@@ -760,6 +765,11 @@ export interface AppActions {
   // Validation Model actions
   setValidationModel: (model: AgentModel) => void;
 
+  // Phase Model actions
+  setPhaseModel: (phase: PhaseModelKey, model: AgentModel | CursorModelId) => void;
+  setPhaseModels: (models: Partial<PhaseModelConfig>) => void;
+  resetPhaseModels: () => void;
+
   // Cursor CLI Settings actions
   setEnabledCursorModels: (models: CursorModelId[]) => void;
   setCursorDefaultModel: (model: CursorModelId) => void;
@@ -904,31 +914,13 @@ const DEFAULT_AI_PROFILES: AIProfile[] = [
   },
   // Cursor profiles
   {
-    id: 'profile-cursor-auto',
-    name: 'Cursor Auto',
-    description: 'Let Cursor choose the best model automatically.',
+    id: 'profile-cursor-refactoring',
+    name: 'Cursor Refactoring',
+    description: 'Cursor Composer 1 for refactoring tasks.',
     provider: 'cursor',
-    cursorModel: 'auto',
+    cursorModel: 'composer-1',
     isBuiltIn: true,
     icon: 'Sparkles',
-  },
-  {
-    id: 'profile-cursor-fast',
-    name: 'Cursor Fast',
-    description: 'Quick responses with GPT-4o Mini via Cursor.',
-    provider: 'cursor',
-    cursorModel: 'gpt-4o-mini',
-    isBuiltIn: true,
-    icon: 'Zap',
-  },
-  {
-    id: 'profile-cursor-thinking',
-    name: 'Cursor Thinking',
-    description: 'Claude Sonnet 4 with extended thinking via Cursor for complex tasks.',
-    provider: 'cursor',
-    cursorModel: 'claude-sonnet-4-thinking',
-    isBuiltIn: true,
-    icon: 'Brain',
   },
 ];
 
@@ -968,6 +960,7 @@ const initialState: AppState = {
   muteDoneSound: false, // Default to sound enabled (not muted)
   enhancementModel: 'sonnet', // Default to sonnet for feature enhancement
   validationModel: 'opus', // Default to opus for GitHub issue validation
+  phaseModels: DEFAULT_PHASE_MODELS, // Phase-specific model configuration
   enabledCursorModels: getAllCursorModelIds(), // All Cursor models enabled by default
   cursorDefaultModel: 'auto', // Default to auto selection
   autoLoadClaudeMd: false, // Default to disabled (user must opt-in)
@@ -1595,6 +1588,23 @@ export const useAppStore = create<AppState & AppActions>()(
 
       // Validation Model actions
       setValidationModel: (model) => set({ validationModel: model }),
+
+      // Phase Model actions
+      setPhaseModel: (phase, model) =>
+        set((state) => ({
+          phaseModels: {
+            ...state.phaseModels,
+            [phase]: model,
+          },
+        })),
+      setPhaseModels: (models) =>
+        set((state) => ({
+          phaseModels: {
+            ...state.phaseModels,
+            ...models,
+          },
+        })),
+      resetPhaseModels: () => set({ phaseModels: DEFAULT_PHASE_MODELS }),
 
       // Cursor CLI Settings actions
       setEnabledCursorModels: (models) => set({ enabledCursorModels: models }),
