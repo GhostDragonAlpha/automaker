@@ -39,6 +39,17 @@ export type EventType =
   | 'ideation:idea-created'
   | 'ideation:idea-updated'
   | 'ideation:idea-deleted'
-  | 'ideation:idea-converted';
+  | 'ideation:idea-converted'
+  // Debug events
+  | 'debug:metrics'
+  | 'debug:memory-warning'
+  | 'debug:memory-critical'
+  | 'debug:leak-detected'
+  | 'debug:process-spawned'
+  | 'debug:process-updated'
+  | 'debug:process-stopped'
+  | 'debug:process-error'
+  | 'debug:high-cpu'
+  | 'debug:event-loop-blocked';
 
 export type EventCallback = (type: EventType, payload: unknown) => void;

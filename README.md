@@ -374,6 +374,7 @@ npm run lint
 
 - `VITE_SKIP_ELECTRON` - Skip Electron in dev mode
 - `OPEN_DEVTOOLS` - Auto-open DevTools in Electron
+- `ENABLE_DEBUG_PANEL` - Enable the debug panel in non-development builds (for staging environments)
 
 ### Authentication Setup
 
@@ -455,6 +456,7 @@ The application can store your API key securely in the settings UI. The key is p
 - 🎨 **Theme System** - 25+ themes including Dark, Light, Dracula, Nord, Catppuccin, and more
 - 🖥️ **Cross-Platform** - Desktop app for macOS (x64, arm64), Windows (x64), and Linux (x64)
 - 🌐 **Web Mode** - Run in browser or as Electron desktop app
+- 🐛 **Debug Panel** - Floating debug overlay for monitoring memory, CPU, and process performance (dev mode only, toggle with `Cmd/Ctrl+Shift+D`)
 
 ### Advanced Features
 

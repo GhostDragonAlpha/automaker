@@ -63,6 +63,12 @@ import { createPipelineRoutes } from './routes/pipeline/index.js';
 import { pipelineService } from './services/pipeline-service.js';
 import { createIdeationRoutes } from './routes/ideation/index.js';
 import { IdeationService } from './services/ideation-service.js';
+import {
+  createDebugRoutes,
+  createDebugServices,
+  stopDebugServices,
+  type DebugServices,
+} from './routes/debug/index.js';
 
 // Load environment variables
 dotenv.config();
@@ -70,6 +76,8 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || '3008', 10);
 const DATA_DIR = process.env.DATA_DIR || './data';
 const ENABLE_REQUEST_LOGGING = process.env.ENABLE_REQUEST_LOGGING !== 'false'; // Default to true
+const ENABLE_DEBUG_PANEL =
+  process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEBUG_PANEL === 'true';
 
 // Check for required environment variables
 const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
@@ -169,6 +177,13 @@ const claudeUsageService = new ClaudeUsageService();
 const mcpTestService = new MCPTestService(settingsService);
 const ideationService = new IdeationService(events, settingsService, featureLoader);
 
+// Create debug services (dev mode only)
+let debugServices: DebugServices | null = null;
+if (ENABLE_DEBUG_PANEL) {
+  debugServices = createDebugServices(events);
+  logger.info('Debug services enabled');
+}
+
 // Initialize services
 (async () => {
   await agentService.initialize();
@@ -222,6 +237,12 @@ app.use('/api/backlog-plan', createBacklogPlanRoutes(events, settingsService));
 app.use('/api/mcp', createMCPRoutes(mcpTestService));
 app.use('/api/pipeline', createPipelineRoutes(pipelineService));
 app.use('/api/ideation', createIdeationRoutes(events, ideationService, featureLoader));
+
+// Debug routes (dev mode only)
+if (debugServices) {
+  app.use('/api/debug', createDebugRoutes(debugServices));
+  logger.info('Debug API routes mounted at /api/debug');
+}
 
 // Create HTTP server
 const server = createServer(app);
@@ -588,6 +609,9 @@ startServer(PORT);
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down...');
   terminalService.cleanup();
+  if (debugServices) {
+    stopDebugServices(debugServices);
+  }
   server.close(() => {
     logger.info('Server closed');
     process.exit(0);
@@ -597,6 +621,9 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down...');
   terminalService.cleanup();
+  if (debugServices) {
+    stopDebugServices(debugServices);
+  }
   server.close(() => {
     logger.info('Server closed');
     process.exit(0);

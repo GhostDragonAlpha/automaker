@@ -170,3 +170,44 @@ Use `resolveModelString()` from `@automaker/model-resolver` to convert model ali
 - `DATA_DIR` - Data storage directory (default: ./data)
 - `ALLOWED_ROOT_DIRECTORY` - Restrict file operations to specific directory
 - `AUTOMAKER_MOCK_AGENT=true` - Enable mock agent mode for CI testing
+- `ENABLE_DEBUG_PANEL=true` - Enable debug panel in non-development builds
+
+## Debug System (Development Only)
+
+The debug system provides real-time monitoring of server performance. Toggle with `Cmd/Ctrl+Shift+D`.
+
+### Debug Services (`apps/server/src/services/`)
+
+- `PerformanceMonitorService` - Collects memory/CPU metrics, detects leaks via linear regression
+- `ProcessRegistryService` - Tracks spawned agents, terminals, CLIs with lifecycle events
+
+### Debug API (`apps/server/src/routes/debug/`)
+
+- `GET /api/debug/metrics` - Current metrics snapshot
+- `POST /api/debug/metrics/start` - Start collection with optional config
+- `POST /api/debug/metrics/stop` - Stop collection
+- `GET /api/debug/processes` - List tracked processes with filters
+
+### Debug Types (`libs/types/src/debug.ts`)
+
+All debug types are exported from `@automaker/types`:
+
+```typescript
+import type {
+  DebugMetricsSnapshot,
+  TrackedProcess,
+  MemoryTrend,
+  ProcessSummary,
+} from '@automaker/types';
+import { formatBytes, formatDuration } from '@automaker/types';
+```
+
+### UI Components (`apps/ui/src/components/debug/`)
+
+- `DebugPanel` - Main draggable container with tabs
+- `MemoryMonitor` - Heap usage charts and leak indicators
+- `CPUMonitor` - CPU gauge and event loop lag display
+- `ProcessKanban` - Visual board of tracked processes
+- `RenderTracker` - React component render statistics
+
+See `docs/server/debug-api.md` for full API documentation.

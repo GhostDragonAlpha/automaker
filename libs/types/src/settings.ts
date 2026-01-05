@@ -212,6 +212,8 @@ export interface KeyboardShortcuts {
   splitTerminalDown: string;
   /** Close current terminal */
   closeTerminal: string;
+  /** Toggle debug panel (dev only) */
+  toggleDebugPanel: string;
 }
 
 /**
@@ -638,6 +640,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: KeyboardShortcuts = {
   splitTerminalRight: 'Alt+D',
   splitTerminalDown: 'Alt+S',
   closeTerminal: 'Alt+W',
+  toggleDebugPanel: 'Cmd+Shift+D',
 };
 
 /** Default global settings used when no settings file exists */

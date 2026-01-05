@@ -24,6 +24,14 @@ import { ThemeOption, themeOptions } from '@/config/theme-options';
 import { SandboxRiskDialog } from '@/components/dialogs/sandbox-risk-dialog';
 import { SandboxRejectionScreen } from '@/components/dialogs/sandbox-rejection-screen';
 import { LoadingState } from '@/components/ui/loading-state';
+import {
+  DebugPanelWrapper,
+  DebugStatusBarWrapper,
+  DebugDockedPanelWrapper,
+  RenderTrackingProvider,
+  RenderProfiler,
+} from '@/components/debug';
+import { useDebugStore } from '@/store/debug-store';
 
 const logger = createLogger('RootLayout');
 
@@ -46,6 +54,7 @@ function RootLayoutContent() {
   const authChecked = useAuthStore((s) => s.authChecked);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { openFileBrowser } = useFileBrowser();
+  const toggleDebugPanel = useDebugStore((s) => s.togglePanel);
 
   const isSetupRoute = location.pathname === '/setup';
   const isLoginRoute = location.pathname === '/login';
@@ -87,12 +96,31 @@ function RootLayoutContent() {
     }
   }, []);
 
+  // Debug panel shortcut - Cmd/Ctrl+Shift+D
+  const handleDebugPanelShortcut = useCallback(
+    (event: KeyboardEvent) => {
+      // Only in dev mode
+      if (!import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_PANEL !== 'true') {
+        return;
+      }
+
+      const cmdCtrl = event.metaKey || event.ctrlKey;
+      if (cmdCtrl && event.shiftKey && event.key.toLowerCase() === 'd') {
+        event.preventDefault();
+        toggleDebugPanel();
+      }
+    },
+    [toggleDebugPanel]
+  );
+
   useEffect(() => {
     window.addEventListener('keydown', handleStreamerPanelShortcut);
+    window.addEventListener('keydown', handleDebugPanelShortcut);
     return () => {
       window.removeEventListener('keydown', handleStreamerPanelShortcut);
+      window.removeEventListener('keydown', handleDebugPanelShortcut);
     };
-  }, [handleStreamerPanelShortcut]);
+  }, [handleStreamerPanelShortcut, handleDebugPanelShortcut]);
 
   const effectiveTheme = getEffectiveTheme();
   // Defer the theme value to keep UI responsive during rapid hover changes
@@ -394,12 +422,25 @@ function RootLayoutContent() {
           aria-hidden="true"
         />
       )}
-      <Sidebar />
+      <RenderProfiler name="Sidebar">
+        <Sidebar />
+      </RenderProfiler>
       <div
         className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
         style={{ marginRight: streamerPanelOpen ? '250px' : '0' }}
       >
-        <Outlet />
+        {/* Main content area */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <RenderProfiler name="MainContent">
+            <Outlet />
+          </RenderProfiler>
+        </div>
+
+        {/* Docked Debug Panel - expands above status bar */}
+        <DebugDockedPanelWrapper />
+
+        {/* Docked Debug Status Bar - VS Code style footer */}
+        <DebugStatusBarWrapper />
       </div>
 
       {/* Hidden streamer panel - opens with "\" key, pushes content */}
@@ -409,6 +450,9 @@ function RootLayoutContent() {
         }`}
       />
       <Toaster richColors position="bottom-right" />
+
+      {/* Floating Debug Panel - alternative mode */}
+      <DebugPanelWrapper />
 
       {/* Show sandbox dialog if needed */}
       <SandboxRiskDialog
@@ -421,9 +465,18 @@ function RootLayoutContent() {
 }
 
 function RootLayout() {
+  // Check if dev mode for render tracking
+  const isDev = import.meta.env.DEV || import.meta.env.VITE_ENABLE_DEBUG_PANEL === 'true';
+
   return (
     <FileBrowserProvider>
-      <RootLayoutContent />
+      {isDev ? (
+        <RenderTrackingProvider>
+          <RootLayoutContent />
+        </RenderTrackingProvider>
+      ) : (
+        <RootLayoutContent />
+      )}
     </FileBrowserProvider>
   );
 }

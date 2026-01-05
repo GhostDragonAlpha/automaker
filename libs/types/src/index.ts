@@ -194,3 +194,62 @@ export type {
   IdeationStreamEvent,
   IdeationAnalysisEvent,
 } from './ideation.js';
+
+// Debug types
+export type {
+  // Memory metrics
+  ServerMemoryMetrics,
+  BrowserMemoryMetrics,
+  MemoryMetrics,
+  MemoryTrend,
+  // CPU metrics
+  ServerCPUMetrics,
+  CPUMetrics,
+  // Agent resource metrics
+  FileIOOperation,
+  FileIOMetrics,
+  ToolUsageMetrics,
+  BashMetrics,
+  APIMetrics,
+  AgentMemoryMetrics,
+  AgentResourceMetrics,
+  // Process tracking
+  ProcessType,
+  ProcessStatus,
+  TrackedProcess,
+  ProcessSummary,
+  // Render tracking
+  RenderPhase,
+  ComponentRender,
+  ComponentRenderStats,
+  RenderTrackingSummary,
+  // Combined metrics
+  DebugMetricsSnapshot,
+  DebugMetricsConfig,
+  // Events
+  DebugEventType,
+  DebugEventBase,
+  DebugMetricsEvent,
+  DebugMemoryWarningEvent,
+  DebugLeakDetectedEvent,
+  DebugProcessEvent,
+  DebugHighCPUEvent,
+  DebugEventLoopBlockedEvent,
+  DebugEvent,
+  // API types
+  StartDebugMetricsRequest,
+  DebugMetricsResponse,
+  GetProcessesRequest,
+  GetProcessesResponse,
+  // Utility types
+  TimeSeriesDataPoint,
+  MemoryDataPoint,
+  CPUDataPoint,
+} from './debug.js';
+export {
+  DEFAULT_DEBUG_METRICS_CONFIG,
+  formatBytes,
+  formatDuration,
+  calculatePercentage,
+  createEmptyAgentResourceMetrics,
+} from './debug.js';
