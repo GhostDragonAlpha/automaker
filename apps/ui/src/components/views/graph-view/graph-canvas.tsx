@@ -257,6 +257,7 @@ function GraphCanvasInner({
           zoomable
           pannable
           className="!bg-popover/90 !border-border rounded-lg shadow-lg"
+          position="top-right"
         />
 
         <GraphControls

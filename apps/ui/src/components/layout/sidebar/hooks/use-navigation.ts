@@ -11,6 +11,7 @@ import {
   GitPullRequest,
   Zap,
   Lightbulb,
+  Globe,
 } from 'lucide-react';
 import type { NavSection, NavItem } from '../types';
 import type { KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts';
@@ -34,6 +35,7 @@ interface UseNavigationProps {
     ideation: string;
     githubIssues: string;
     githubPrs: string;
+    worldModel?: string; // Optional for now until added to shortcuts type
   };
   hideSpecEditor: boolean;
   hideContext: boolean;
@@ -143,6 +145,12 @@ export function useNavigation({
         label: 'Kanban Board',
         icon: LayoutGrid,
         shortcut: shortcuts.board,
+      },
+      {
+        id: 'world-model',
+        label: 'World Model',
+        icon: Globe,
+        shortcut: shortcuts.worldModel || '', // Fallback if not defined
       },
       {
         id: 'agent',

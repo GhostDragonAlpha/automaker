@@ -261,6 +261,13 @@ function RootLayoutContent() {
       authCheckRunning.current = true;
 
       try {
+        // FORCE BYPASS FOR LOCAL Z.AI DEV - Always authenticate
+        // This removes the login requirement for local development
+        useAuthStore.getState().setAuthState({ isAuthenticated: true, authChecked: true });
+        logger.info('[Z.AI DEV] Authentication bypassed for local development');
+        return;
+
+        // --- Original auth logic below (disabled) ---
         // Initialize API key for Electron mode
         await initApiKey();
 

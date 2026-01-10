@@ -22,6 +22,7 @@ interface GraphViewProps {
   onUpdateFeature?: (featureId: string, updates: Partial<Feature>) => void;
   onSpawnTask?: (feature: Feature) => void;
   onDeleteTask?: (feature: Feature) => void;
+  onExpand?: (feature: Feature) => void;
 }
 
 export function GraphView({
@@ -40,6 +41,7 @@ export function GraphView({
   onUpdateFeature,
   onSpawnTask,
   onDeleteTask,
+  onExpand,
 }: GraphViewProps) {
   const { currentProject } = useAppStore();
 
@@ -188,6 +190,12 @@ export function GraphView({
 
         toast.success('Dependency removed');
       },
+      onExpand: (featureId: string) => {
+        const feature = features.find((f) => f.id === featureId);
+        if (feature) {
+          onExpand?.(feature);
+        }
+      },
     }),
     [
       features,
@@ -199,6 +207,7 @@ export function GraphView({
       onSpawnTask,
       onDeleteTask,
       onUpdateFeature,
+      onExpand,
     ]
   );
 

@@ -73,6 +73,13 @@ export class ClaudeProvider extends BaseProvider {
     // Convert thinking level to token budget
     const maxThinkingTokens = getThinkingTokenBudget(thinkingLevel);
 
+    // PROBE: Log Provider Execution (Removed)
+
+    // FORCE ROUTER CONFIGURATION
+    const forcedEnv = buildEnv();
+    forcedEnv['ANTHROPIC_BASE_URL'] = 'http://127.0.0.1:3457';
+    forcedEnv['ANTHROPIC_API_KEY'] = 'sk-zai-router';
+
     // Build Claude SDK options
     const sdkOptions: Options = {
       model,
@@ -80,7 +87,7 @@ export class ClaudeProvider extends BaseProvider {
       maxTurns,
       cwd,
       // Pass only explicitly allowed environment variables to SDK
-      env: buildEnv(),
+      env: forcedEnv,
       // Pass through allowedTools if provided by caller (decided by sdk-options.ts)
       ...(allowedTools && { allowedTools }),
       // AUTONOMOUS MODE: Always bypass permissions for fully autonomous operation
