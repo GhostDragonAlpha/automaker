@@ -266,22 +266,27 @@ export function WorldModelView() {
 
                 const data = await response.json();
                 const terms = data.terms || [];
+                const parentCategory = data.parentCategory || 'feature';
+                const parentWorldModelLayer = data.parentWorldModelLayer;
+                const ancestryPath = data.ancestryPath || [];
 
                 toast.success(`Expanded "${seedFeature.title}"`, {
-                    description: `Generated ${terms.length} structural nodes based on ${options.domainContext}`,
+                    description: `Generated ${terms.length} nodes. Path: ${ancestryPath.join(' → ')}`,
                 });
 
                 // Create features for each term
                 for (const term of terms) {
                     await handleAddFeature({
                         title: term.title,
-                        description: `Generated via Smart Expand.\n\nRationale: ${term.rationale}\nContext: ${options.domainContext}`,
-                        category: 'feature',
+                        description: `Generated via Smart Expand.\n\nRationale: ${term.rationale}\nContext: ${options.domainContext}\nWorld Model Layer: ${term.worldModelLayer || parentWorldModelLayer}`,
+                        category: term.category || parentCategory,
                         status: 'backlog',
                         steps: [],
                         phaseId: 'phase1',
                         // Link to parent
                         dependencies: [seedFeature.id],
+                        // Preserve World Model layer
+                        ...(term.worldModelLayer !== undefined && { worldModelLayer: term.worldModelLayer }),
                     });
                 }
             } catch (error) {

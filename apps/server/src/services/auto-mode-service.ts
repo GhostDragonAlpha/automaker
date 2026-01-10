@@ -1252,8 +1252,8 @@ Address the follow-up instructions above. Review the previous work and make the 
       const feature = await this.loadFeature(projectPath, featureId);
       const commitMessage = feature
         ? `feat: ${this.extractTitleFromDescription(
-            feature.description
-          )}\n\nImplemented by Automaker auto-mode`
+          feature.description
+        )}\n\nImplemented by Automaker auto-mode`
         : `feat: Feature ${featureId}`;
 
       // Stage and commit
@@ -2044,7 +2044,7 @@ This helps parse your summary correctly in the output logs.`;
       if (!supportsVision) {
         throw new Error(
           `This model (${effectiveModel}) does not support image input. ` +
-            `Please switch to a model that supports vision (like Claude models), or remove the images and try again.`
+          `Please switch to a model that supports vision (like Claude models), or remove the images and try again.`
         );
       }
     }
@@ -2323,7 +2323,7 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
               ) {
                 throw new Error(
                   'Authentication failed: Invalid or expired API key. ' +
-                    "Please check your ANTHROPIC_API_KEY, or run 'claude login' to re-authenticate."
+                  "Please check your ANTHROPIC_API_KEY, or run 'claude login' to re-authenticate."
                 );
               }
 
@@ -2878,9 +2878,9 @@ ${completedTasks.map((t) => `- [x] ${t.id}: ${t.description}`).join('\n')}
     if (remainingTasks.length > 0) {
       prompt += `### Coming Up Next (${remainingTasks.length} tasks remaining)
 ${remainingTasks
-  .slice(0, 3)
-  .map((t) => `- [ ] ${t.id}: ${t.description}`)
-  .join('\n')}
+          .slice(0, 3)
+          .map((t) => `- [ ] ${t.id}: ${t.description}`)
+          .join('\n')}
 ${remainingTasks.length > 3 ? `... and ${remainingTasks.length - 3} more tasks` : ''}
 
 `;
@@ -2949,6 +2949,7 @@ Begin implementing task ${task.id} now.`;
       }
     });
   }
+
 
   /**
    * Extract and record learnings from a completed feature
@@ -3150,6 +3151,164 @@ If nothing notable: {"learnings": []}`;
       }
     } catch (error) {
       console.warn(`[AutoMode] Failed to extract learnings from feature ${feature.id}:`, error);
+
+
+  /**
+   * Expand a feature into child features using AI knowledge graph expansion.
+   * This generates structural dependencies and related concepts.
+   * Enhanced to trace World Model ancestry and inherit categories.
+   */
+  async expandKnowledgeGraph(
+        projectPath: string,
+        seedTitle: string,
+        options: {
+        depth?: number;
+        domainContext?: string;
+        focusArea?: string;
+        externalContext?: string;
+      }
+      ): Promise < {
+        terms: Array<{ title: string; rationale: string; category?: string; worldModelLayer?: number }>;
+        parentCategory?: string;
+        parentWorldModelLayer?: number;
+        ancestryPath?: string[];
+      } > {
+        const { depth = 1, domainContext = 'General', focusArea = 'Structure', externalContext = '' } = options;
+
+        // Get provider settings
+        const settings = this.settingsService?.getAll();
+        const modelResolver = this.settingsService ? new (await import('@automaker/model-resolver')).ModelResolverService(this.settingsService) : null;
+
+        if(!modelResolver) {
+          throw new Error('Settings service not available for knowledge graph expansion');
+        }
+
+    // Load all features to find the seed and build ancestry
+    const allFeatures = await this.featureLoader.loadFeatures(projectPath);
+        const seedFeature = allFeatures.find(f => f.title === seedTitle);
+
+        // Build ancestry path by following dependencies upward
+        const ancestryPath: string[] = [];
+        let parentCategory: string | undefined;
+        let parentWorldModelLayer: number | undefined;
+
+        if(seedFeature) {
+          parentCategory = seedFeature.category;
+          parentWorldModelLayer = (seedFeature as any).worldModelLayer;
+
+          // Trace ancestry through dependencies
+          let current = seedFeature;
+          const visited = new Set<string>();
+
+          while (current && !visited.has(current.id)) {
+            visited.add(current.id);
+            ancestryPath.unshift(current.title);
+
+            // Find parent via dependencies
+            if (current.dependencies && current.dependencies.length > 0) {
+              const parentId = current.dependencies[0];
+              const parent = allFeatures.find(f => f.id === parentId);
+              if (parent) {
+                current = parent;
+              } else {
+                break;
+              }
+            } else {
+              break;
+            }
+          }
+        }
+
+    // Build World Model context from ancestry
+    const ancestryContext = ancestryPath.length > 0
+          ? `World Model Path: ${ancestryPath.join(' → ')}`
+          : '';
+
+        // Resolve model
+        const modelConfig = await modelResolver.resolveModel();
+
+        // Build the expansion prompt with World Model awareness
+        const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
+
+${ancestryContext}
+
+The Chimera World Model follows a 14-layer hierarchy:
+Layer 0: Void (The centerless center)
+Layer 1: Light (First energy)
+Layer 2: Matter (Mass and elements)
+Layer 3: Stars (Fusion ignites)
+Layer 4: Worlds (Planets form)
+Layer 5: Spheres (Atmosphere, hydrosphere)
+Layer 6: Life (Biology emerges)
+Layer 7: Mind (Consciousness)
+Layer 8: Tool (Technology)
+Layer 9: Ship (Player's home)
+Layer 10: Flight (Movement through space)
+Layer 11: Voyage (Exploration)
+Layer 12: Hypothetical (The reward - FTL, wormholes)
+Layer 13: Return (Coming home changed)
+
+Current Layer: ${parentWorldModelLayer !== undefined ? `Layer ${parentWorldModelLayer} (${parentCategory})` : 'Unknown'}
+Domain Context: ${domainContext}
+Focus Area: ${focusArea}
+
+Rules:
+1. Generate ${depth * 3} concepts that are STRUCTURAL dependencies of "${seedTitle}"
+2. Each concept should be concrete and implementable in a game engine
+3. Concepts should fit within or adjacent to the current World Model layer
+4. Follow physics-first design: real orbital mechanics, thermodynamics, life support
+5. Consider "Brothers Test": would this feature enhance multiplayer experience?
+
+${externalContext ? `Additional Context:\n${externalContext}\n` : ''}
+
+Respond with a JSON array of objects:
+[{"title": "Concept Name", "rationale": "Why this is needed", "suggestedLayer": ${parentWorldModelLayer || 9}}]`;
+
+        const userPrompt = `Seed Concept: "${seedTitle}"
+${ancestryPath.length > 1 ? `Ancestry: ${ancestryPath.join(' → ')}` : ''}
+
+Generate ${depth * 3} structural dependencies for this concept.`;
+
+        try {
+          // Use the provider to make the AI call
+          const providerFactory = await import('../providers/provider-factory.js');
+          const provider = await providerFactory.getProviderForModel(modelConfig.model, settings || {});
+
+          const response = await provider.chat({
+            model: modelConfig.model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 2000
+          });
+
+          // Parse the response
+          const content = response.choices?.[0]?.message?.content || '';
+
+          // Extract JSON from response
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if(!jsonMatch) {
+            console.error('Failed to parse expansion response:', content);
+            return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
+          }
+
+      const rawTerms = JSON.parse(jsonMatch[0]);
+
+          // Enhance terms with category info
+          const terms = rawTerms.map((term: any) => ({
+            title: term.title,
+            rationale: term.rationale,
+            category: parentCategory,
+            worldModelLayer: term.suggestedLayer || parentWorldModelLayer
+          }));
+
+          return { terms, parentCategory, parentWorldModelLayer, ancestryPath };
+        } catch(error) {
+          console.error('Knowledge graph expansion error:', error);
+          throw error;
+
+        }
+      }
     }
-  }
-}
