@@ -15,6 +15,8 @@ import { Feature } from '@/store/app-store';
 import { Sparkles, Loader2, GitGraph } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Textarea } from '@/components/ui/textarea';
+
 interface SmartExpandDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,6 +28,7 @@ export interface ExpandOptions {
   depth: number;
   domainContext: string;
   focusArea: string;
+  externalContext?: string;
 }
 
 export function SmartExpandDialog({
@@ -38,6 +41,7 @@ export function SmartExpandDialog({
   const [depth, setDepth] = useState([1]);
   const [domainContext, setDomainContext] = useState('');
   const [focusArea, setFocusArea] = useState('');
+  const [externalContext, setExternalContext] = useState('');
 
   const handleExpand = async () => {
     if (!feature) return;
@@ -48,12 +52,14 @@ export function SmartExpandDialog({
         depth: depth[0],
         domainContext: domainContext || 'General Engineering', // Default if empty
         focusArea: focusArea || 'Structural Dependencies', // Default if empty
+        externalContext: externalContext,
       });
       onOpenChange(false);
       // Reset state for next time
       setDepth([1]);
       setDomainContext('');
       setFocusArea('');
+      setExternalContext('');
     } catch (error) {
       console.error('Expansion failed:', error);
       toast.error('Failed to expand knowledge graph');
@@ -123,6 +129,16 @@ export function SmartExpandDialog({
                 onChange={(e) => setFocusArea(e.target.value)}
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="external">Source Material / Raw Data (The "Hopper")</Label>
+              <Textarea
+                id="external"
+                placeholder="Paste raw text, specs, or download content here to shape the output..."
+                value={externalContext}
+                onChange={(e) => setExternalContext(e.target.value)}
+                className="h-24 font-mono text-xs"
+              />
+            </div>
           </div>
 
           {/* Preview Info (Static for now) */}
@@ -140,29 +156,44 @@ export function SmartExpandDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleExpand}
-            disabled={isGenerating}
-            className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Crawling...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Generate Graph
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        {/* Preview Info (Static for now) */}
+        <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground flex items- gap-2">
+          <GitGraph className="w-4 h-4 shrink-0 mt-0.5" />
+          <p>
+            Estimated generation:{' '}
+            <strong>
+              {depth[0] * 5} - {depth[0] * 12} new nodes
+            </strong>
+            .
+            <br />
+            Source: Internal Knowledge Base + Synthesized Reasoning.
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleExpand}
+          disabled={isGenerating}
+          className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
+        >
+          {isGenerating ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Crawling...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Generate Graph
+            </>
+          )}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+    </Dialog >
   );
 }

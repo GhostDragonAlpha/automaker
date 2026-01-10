@@ -13,6 +13,7 @@ import {
   EditFeatureDialog,
   FollowUpDialog,
   PlanApprovalDialog,
+  SmartExpandDialog,
 } from './board-view/dialogs';
 import { useAutoMode } from '@/hooks/use-auto-mode';
 import { useBoardActions } from './board-view/hooks/use-board-actions';
@@ -58,6 +59,60 @@ export function WorldModelView() {
 
   // Plan approval loading state
   const [isPlanApprovalLoading, setIsPlanApprovalLoading] = useState(false);
+
+  // Smart Expand state
+  const [showSmartExpand, setShowSmartExpand] = useState(false);
+  const [smartExpandFeature, setSmartExpandFeature] = useState<Feature | null>(null);
+
+  const handleRunSmartExpand = useCallback(
+    async (seedFeature: Feature, options: any) => {
+      try {
+        const response = await fetch('http://localhost:3000/api/auto-mode/expand-feature', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectPath: currentProject?.path,
+            seedTitle: seedFeature.title,
+            depth: options.depth,
+            domainContext: options.domainContext,
+            focusArea: options.focusArea,
+            externalContext: options.externalContext,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to expand feature');
+        }
+
+        const data = await response.json();
+        const terms = data.terms || [];
+
+        toast.success(`Expanded "${seedFeature.title}"`, {
+          description: `Generated ${terms.length} structural nodes based on ${options.domainContext}`,
+        });
+
+        // Create features for each term
+        for (const term of terms) {
+          await handleAddFeature({
+            title: term.title,
+            description: `Generated via Smart Expand.\n\nRationale: ${term.rationale}\nContext: ${options.domainContext}`,
+            category: 'feature',
+            status: 'backlog',
+            steps: [],
+            phaseId: 'phase1',
+            // Link to parent
+            dependencies: [seedFeature.id],
+          });
+        }
+      } catch (error) {
+        console.error('Smart Expand error:', error);
+        toast.error('Failed to expand feature');
+      }
+    },
+    [handleAddFeature, currentProject]
+  );
 
   // Auto mode hook
   const autoMode = useAutoMode();
@@ -397,6 +452,10 @@ export function WorldModelView() {
           setSpawnParentFeature(feature);
           setShowAddDialog(true);
         }}
+        onExpand={(feature) => {
+          setSmartExpandFeature(feature);
+          setShowSmartExpand(true);
+        }}
       />
 
       {/* Add Feature Dialog */}
@@ -436,6 +495,17 @@ export function WorldModelView() {
         showProfilesOnly={showProfilesOnly}
         aiProfiles={aiProfiles}
         allFeatures={hookFeatures}
+      />
+
+      {/* Smart Expand Dialog */}
+      <SmartExpandDialog
+        open={showSmartExpand}
+        onOpenChange={(open) => {
+          setShowSmartExpand(open);
+          if (!open) setSmartExpandFeature(null);
+        }}
+        feature={smartExpandFeature}
+        onExpand={handleRunSmartExpand}
       />
 
       {/* Agent Output Modal */}
