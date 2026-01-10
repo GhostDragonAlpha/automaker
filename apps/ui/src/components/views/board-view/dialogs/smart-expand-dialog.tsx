@@ -156,44 +156,29 @@ export function SmartExpandDialog({
           </div>
         </div>
 
-        {/* Preview Info (Static for now) */}
-        <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground flex items- gap-2">
-          <GitGraph className="w-4 h-4 shrink-0 mt-0.5" />
-          <p>
-            Estimated generation:{' '}
-            <strong>
-              {depth[0] * 5} - {depth[0] * 12} new nodes
-            </strong>
-            .
-            <br />
-            Source: Internal Knowledge Base + Synthesized Reasoning.
-          </p>
-        </div>
-      </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleExpand}
-          disabled={isGenerating}
-          className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Crawling...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              Generate Graph
-            </>
-          )}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isGenerating}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExpand}
+            disabled={isGenerating}
+            className="bg-purple-600 hover:bg-purple-700 text-white gap-2"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Crawling...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Generate Graph
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
     </Dialog >
   );
 }
