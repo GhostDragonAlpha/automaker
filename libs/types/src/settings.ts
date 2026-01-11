@@ -99,7 +99,6 @@ export function getThinkingTokenBudget(level: ThinkingLevel | undefined): number
 }
 
 /** ModelProvider - AI model provider for credentials and API key management */
-<<<<<<< HEAD
 export type ModelProvider = 'claude' | 'cursor' | 'codex' | 'opencode' | 'zai';
 
 const DEFAULT_CODEX_AUTO_LOAD_AGENTS = false;

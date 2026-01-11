@@ -11,11 +11,8 @@
 import {
   CLAUDE_MODEL_MAP,
   CURSOR_MODEL_MAP,
-<<<<<<< HEAD
   CODEX_MODEL_MAP,
-=======
   ZAI_MODEL_MAP,
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   DEFAULT_MODELS,
   PROVIDER_PREFIXES,
   isCursorModel,

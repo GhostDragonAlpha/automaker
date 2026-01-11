@@ -54,9 +54,9 @@ export type { ErrorType, ErrorInfo } from './error.js';
 export type { ImageData, ImageContentBlock } from './image.js';
 
 // Model types and constants
-<<<<<<< HEAD
 export {
   CLAUDE_MODEL_MAP,
+  ZAI_MODEL_MAP,
   CODEX_MODEL_MAP,
   CODEX_MODEL_IDS,
   REASONING_CAPABLE_MODELS,
@@ -67,9 +67,6 @@ export {
   type CodexModelId,
   type AgentModel,
 } from './model.js';
-=======
-export { CLAUDE_MODEL_MAP, ZAI_MODEL_MAP, DEFAULT_MODELS, type ModelAlias } from './model.js';
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
 // Event types
 export type { EventType, EventCallback } from './event.js';
