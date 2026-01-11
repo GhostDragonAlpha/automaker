@@ -29,6 +29,7 @@ export interface ExpandOptions {
   domainContext: string;
   focusArea: string;
   externalContext?: string;
+  subspecTemplate?: string;
 }
 
 export function SmartExpandDialog({
@@ -42,6 +43,20 @@ export function SmartExpandDialog({
   const [domainContext, setDomainContext] = useState('');
   const [focusArea, setFocusArea] = useState('');
   const [externalContext, setExternalContext] = useState('');
+  const [subspecTemplate, setSubspecTemplate] = useState('');
+
+  // Extract existing template when opening
+  useEffect(() => {
+    if (feature && open) {
+      // Look for "Subspec Contract" header in description
+      const contractMatch = feature.description?.match(/# Subspec Contract\n> ([\s\S]*?)(?=\n#|$)/);
+      if (contractMatch) {
+        setSubspecTemplate(contractMatch[1].trim());
+      } else {
+        setSubspecTemplate('');
+      }
+    }
+  }, [feature, open]);
 
   const handleExpand = async () => {
     if (!feature) return;
@@ -53,6 +68,7 @@ export function SmartExpandDialog({
         domainContext: domainContext || 'General Engineering', // Default if empty
         focusArea: focusArea || 'Structural Dependencies', // Default if empty
         externalContext: externalContext,
+        subspecTemplate: subspecTemplate,
       });
       onOpenChange(false);
       // Reset state for next time
@@ -139,6 +155,19 @@ export function SmartExpandDialog({
                 className="h-24 font-mono text-xs"
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="subspec">Subspec Template (Contract State)</Label>
+              <Textarea
+                id="subspec"
+                placeholder="Persona description, constraints, and rules for children to inherit..."
+                value={subspecTemplate}
+                onChange={(e) => setSubspecTemplate(e.target.value)}
+                className="h-24 font-mono text-xs bg-purple-500/5 border-purple-200 dark:border-purple-800"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                This contract will be passed down to all generated children recursively.
+              </p>
+            </div>
           </div>
 
           {/* Preview Info (Static for now) */}
@@ -179,6 +208,6 @@ export function SmartExpandDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog >
+    </Dialog>
   );
 }

@@ -2950,7 +2950,6 @@ Begin implementing task ${task.id} now.`;
     });
   }
 
-
   /**
    * Extract and record learnings from a completed feature
    * Uses a quick Claude call to identify important decisions and patterns
@@ -3166,6 +3165,7 @@ If nothing notable: {"learnings": []}`;
         domainContext?: string;
         focusArea?: string;
         externalContext?: string;
+        subspecTemplate?: string;
       }
       ): Promise < {
         terms: Array<{ title: string; rationale: string; category?: string; worldModelLayer?: number }>;
@@ -3173,11 +3173,19 @@ If nothing notable: {"learnings": []}`;
         parentWorldModelLayer?: number;
         ancestryPath?: string[];
       } > {
-        const { depth = 1, domainContext = 'General', focusArea = 'Structure', externalContext = '' } = options;
+        const {
+          depth = 1,
+          domainContext = 'General',
+          focusArea = 'Structure',
+          externalContext = '',
+          subspecTemplate = '',
+        } = options;
 
         // Get provider settings
         const settings = this.settingsService?.getAll();
-        const modelResolver = this.settingsService ? new (await import('@automaker/model-resolver')).ModelResolverService(this.settingsService) : null;
+        const modelResolver = this.settingsService
+          ? new (await import('@automaker/model-resolver')).ModelResolverService(this.settingsService)
+          : null;
 
         if(!modelResolver) {
           throw new Error('Settings service not available for knowledge graph expansion');
@@ -3185,7 +3193,7 @@ If nothing notable: {"learnings": []}`;
 
     // Load all features to find the seed and build ancestry
     const allFeatures = await this.featureLoader.loadFeatures(projectPath);
-        const seedFeature = allFeatures.find(f => f.title === seedTitle);
+        const seedFeature = allFeatures.find((f) => f.title === seedTitle);
 
         // Build ancestry path by following dependencies upward
         const ancestryPath: string[] = [];
@@ -3207,28 +3215,23 @@ If nothing notable: {"learnings": []}`;
             // Find parent via dependencies
             if (current.dependencies && current.dependencies.length > 0) {
               const parentId = current.dependencies[0];
-              const parent = allFeatures.find(f => f.id === parentId);
+              const parent = allFeatures.find((f) => f.id === parentId);
               if (parent) {
                 current = parent;
               } else {
                 break;
               }
-            } else {
-              break;
             }
-          }
-        }
 
-    // Build World Model context from ancestry
-    const ancestryContext = ancestryPath.length > 0
-          ? `World Model Path: ${ancestryPath.join(' → ')}`
-          : '';
+            // Build World Model context from ancestry
+            const ancestryContext =
+              ancestryPath.length > 0 ? `World Model Path: ${ancestryPath.join(' → ')}` : '';
 
-        // Resolve model
-        const modelConfig = await modelResolver.resolveModel();
+            // Resolve model
+            const modelConfig = await modelResolver.resolveModel();
 
-        // Build the expansion prompt with World Model awareness
-        const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
+            // Build the expansion prompt with World Model awareness
+            const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
 
 ${ancestryContext}
 
@@ -3252,6 +3255,16 @@ Current Layer: ${parentWorldModelLayer !== undefined ? `Layer ${parentWorldModel
 Domain Context: ${domainContext}
 Focus Area: ${focusArea}
 
+${subspecTemplate
+                ? `SUBSPEC TEMPLATE (CONTRACT STATE):
+This specific branch operates under the following Persona/Contract.
+All generated concepts MUST strictly adhere to these rules:
+----------------------------------------
+${subspecTemplate}
+----------------------------------------`
+                : ''
+              }
+
 Rules:
 1. Generate ${depth * 3} concepts that are STRUCTURAL dependencies of "${seedTitle}"
 2. Each concept should be concrete and implementable in a game engine
@@ -3264,51 +3277,51 @@ ${externalContext ? `Additional Context:\n${externalContext}\n` : ''}
 Respond with a JSON array of objects:
 [{"title": "Concept Name", "rationale": "Why this is needed", "suggestedLayer": ${parentWorldModelLayer || 9}}]`;
 
-        const userPrompt = `Seed Concept: "${seedTitle}"
+            const userPrompt = `Seed Concept: "${seedTitle}"
 ${ancestryPath.length > 1 ? `Ancestry: ${ancestryPath.join(' → ')}` : ''}
 
 Generate ${depth * 3} structural dependencies for this concept.`;
 
-        try {
-          // Use the provider to make the AI call
-          const providerFactory = await import('../providers/provider-factory.js');
-          const provider = await providerFactory.getProviderForModel(modelConfig.model, settings || {});
+            try {
+              // Use the provider to make the AI call
+              const providerFactory = await import('../providers/provider-factory.js');
+              const provider = await providerFactory.getProviderForModel(modelConfig.model, settings || {});
 
-          const response = await provider.chat({
-            model: modelConfig.model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 2000
-          });
+              const response = await provider.chat({
+                model: modelConfig.model,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt },
+                ],
+                temperature: 0.7,
+                max_tokens: 2000,
+              });
 
-          // Parse the response
-          const content = response.choices?.[0]?.message?.content || '';
+              // Parse the response
+              const content = response.choices?.[0]?.message?.content || '';
 
-          // Extract JSON from response
-          const jsonMatch = content.match(/\[[\s\S]*\]/);
-          if(!jsonMatch) {
-            console.error('Failed to parse expansion response:', content);
-            return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
+              // Extract JSON from response
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (!jsonMatch) {
+                console.error('Failed to parse expansion response:', content);
+                return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
+              }
+
+              const rawTerms = JSON.parse(jsonMatch[0]);
+
+              // Enhance terms with category info
+              const terms = rawTerms.map((term: any) => ({
+                title: term.title,
+                rationale: term.rationale,
+                category: parentCategory,
+                worldModelLayer: term.suggestedLayer || parentWorldModelLayer,
+              }));
+
+              return { terms, parentCategory, parentWorldModelLayer, ancestryPath };
+            } catch (error) {
+              console.error('Knowledge graph expansion error:', error);
+              throw error;
+
+            }
           }
-
-      const rawTerms = JSON.parse(jsonMatch[0]);
-
-          // Enhance terms with category info
-          const terms = rawTerms.map((term: any) => ({
-            title: term.title,
-            rationale: term.rationale,
-            category: parentCategory,
-            worldModelLayer: term.suggestedLayer || parentWorldModelLayer
-          }));
-
-          return { terms, parentCategory, parentWorldModelLayer, ancestryPath };
-        } catch(error) {
-          console.error('Knowledge graph expansion error:', error);
-          throw error;
-
         }
-      }
-    }
