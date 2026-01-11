@@ -9,17 +9,7 @@ import type { Request, Response } from 'express';
 import { getQueryService } from '@automaker/providers-core';
 import { createLogger } from '@automaker/utils';
 import { resolveModelString } from '@automaker/model-resolver';
-<<<<<<< HEAD
-import {
-  CLAUDE_MODEL_MAP,
-  isCursorModel,
-  stripProviderPrefix,
-  ThinkingLevel,
-  getThinkingTokenBudget,
-} from '@automaker/types';
-=======
-import { CLAUDE_MODEL_MAP, isCursorModel } from '@automaker/types';
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
+import { CLAUDE_MODEL_MAP, isCursorModel, stripProviderPrefix } from '@automaker/types';
 import { ProviderFactory } from '../../../providers/provider-factory.js';
 import type { SettingsService } from '../../../services/settings-service.js';
 import { getPromptCustomization } from '../../../lib/settings-helpers.js';

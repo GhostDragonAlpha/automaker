@@ -1252,8 +1252,8 @@ Address the follow-up instructions above. Review the previous work and make the 
       const feature = await this.loadFeature(projectPath, featureId);
       const commitMessage = feature
         ? `feat: ${this.extractTitleFromDescription(
-          feature.description
-        )}\n\nImplemented by Automaker auto-mode`
+            feature.description
+          )}\n\nImplemented by Automaker auto-mode`
         : `feat: Feature ${featureId}`;
 
       // Stage and commit
@@ -2044,7 +2044,7 @@ This helps parse your summary correctly in the output logs.`;
       if (!supportsVision) {
         throw new Error(
           `This model (${effectiveModel}) does not support image input. ` +
-          `Please switch to a model that supports vision (like Claude models), or remove the images and try again.`
+            `Please switch to a model that supports vision (like Claude models), or remove the images and try again.`
         );
       }
     }
@@ -2323,7 +2323,7 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
               ) {
                 throw new Error(
                   'Authentication failed: Invalid or expired API key. ' +
-                  "Please check your ANTHROPIC_API_KEY, or run 'claude login' to re-authenticate."
+                    "Please check your ANTHROPIC_API_KEY, or run 'claude login' to re-authenticate."
                 );
               }
 
@@ -2878,9 +2878,9 @@ ${completedTasks.map((t) => `- [x] ${t.id}: ${t.description}`).join('\n')}
     if (remainingTasks.length > 0) {
       prompt += `### Coming Up Next (${remainingTasks.length} tasks remaining)
 ${remainingTasks
-          .slice(0, 3)
-          .map((t) => `- [ ] ${t.id}: ${t.description}`)
-          .join('\n')}
+  .slice(0, 3)
+  .map((t) => `- [ ] ${t.id}: ${t.description}`)
+  .join('\n')}
 ${remainingTasks.length > 3 ? `... and ${remainingTasks.length - 3} more tasks` : ''}
 
 `;
@@ -3150,7 +3150,8 @@ If nothing notable: {"learnings": []}`;
       }
     } catch (error) {
       console.warn(`[AutoMode] Failed to extract learnings from feature ${feature.id}:`, error);
-
+    }
+  }
 
   /**
    * Expand a feature into child features using AI knowledge graph expansion.
@@ -3158,44 +3159,29 @@ If nothing notable: {"learnings": []}`;
    * Enhanced to trace World Model ancestry and inherit categories.
    */
   async expandKnowledgeGraph(
-        projectPath: string,
-        seedTitle: string,
-        options: {
-        depth?: number;
-        domainContext?: string;
-        focusArea?: string;
-        externalContext?: string;
-        subspecTemplate?: string;
-      }
-      ): Promise < {
-        terms: Array<{ title: string; rationale: string; category?: string; worldModelLayer?: number }>;
-        parentCategory?: string;
-        parentWorldModelLayer?: number;
-        ancestryPath?: string[];
-      } > {
-        const {
-          depth = 1,
-          domainContext = 'General',
-          focusArea = 'Structure',
-          externalContext = '',
-          subspecTemplate = '',
-        } = options;
+    projectPath: string,
+    seedTitle: string,
+    options: {
+      depth?: number;
+      domainContext?: string;
+      focusArea?: string;
+      externalContext?: string;
+      subspecTemplate?: string;
+    }
+  ): Promise<{
+    terms: Array<{ title: string; rationale: string; category?: string; worldModelLayer?: number }>;
+    parentCategory?: string;
+    parentWorldModelLayer?: number;
+    ancestryPath?: string[];
+  }> {
+    const {
+      depth = 1,
+      domainContext = 'General',
+      focusArea = 'Structure',
+      externalContext = '',
+      subspecTemplate = '',
+    } = options;
 
-<<<<<<< HEAD
-        // Get provider settings
-        const settings = this.settingsService?.getAll();
-        const modelResolver = this.settingsService
-          ? new (await import('@automaker/model-resolver')).ModelResolverService(this.settingsService)
-          : null;
-
-        if(!modelResolver) {
-          throw new Error('Settings service not available for knowledge graph expansion');
-        }
-
-    // Load all features to find the seed and build ancestry
-    const allFeatures = await this.featureLoader.loadFeatures(projectPath);
-        const seedFeature = allFeatures.find((f) => f.title === seedTitle);
-=======
     // Get provider settings
     const settings = await this.settingsService?.getGlobalSettings();
 
@@ -3206,37 +3192,20 @@ If nothing notable: {"learnings": []}`;
     // Load all features to find the seed and build ancestry
     const allFeatures = await this.featureLoader.getAll(projectPath);
     const seedFeature = allFeatures.find((f: { title?: string }) => f.title === seedTitle);
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
-        // Build ancestry path by following dependencies upward
-        const ancestryPath: string[] = [];
-        let parentCategory: string | undefined;
-        let parentWorldModelLayer: number | undefined;
+    // Build ancestry path by following dependencies upward
+    const ancestryPath: string[] = [];
+    let parentCategory: string | undefined;
+    let parentWorldModelLayer: number | undefined;
 
-        if(seedFeature) {
-          parentCategory = seedFeature.category;
-          parentWorldModelLayer = (seedFeature as any).worldModelLayer;
+    if (seedFeature) {
+      parentCategory = seedFeature.category;
+      parentWorldModelLayer = (seedFeature as any).worldModelLayer;
 
-          // Trace ancestry through dependencies
-          let current = seedFeature;
-          const visited = new Set<string>();
+      // Trace ancestry through dependencies
+      let current = seedFeature;
+      const visited = new Set<string>();
 
-<<<<<<< HEAD
-          while (current && !visited.has(current.id)) {
-            visited.add(current.id);
-            ancestryPath.unshift(current.title);
-
-            // Find parent via dependencies
-            if (current.dependencies && current.dependencies.length > 0) {
-              const parentId = current.dependencies[0];
-              const parent = allFeatures.find((f) => f.id === parentId);
-              if (parent) {
-                current = parent;
-              } else {
-                break;
-              }
-            }
-=======
       while (current && !visited.has(current.id)) {
         visited.add(current.id);
         ancestryPath.unshift(current.title ?? '');
@@ -3255,26 +3224,20 @@ If nothing notable: {"learnings": []}`;
         }
       }
     }
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
-            // Build World Model context from ancestry
-            const ancestryContext =
-              ancestryPath.length > 0 ? `World Model Path: ${ancestryPath.join(' → ')}` : '';
+    // Build World Model context from ancestry
+    const ancestryContext =
+      ancestryPath.length > 0 ? `World Model Path: ${ancestryPath.join(' → ')}` : '';
 
-<<<<<<< HEAD
-            // Resolve model
-            const modelConfig = await modelResolver.resolveModel();
-=======
     // Resolve model from settings
     const { resolvePhaseModel } = await import('@automaker/model-resolver');
     const phaseModelEntry = settings?.phaseModels?.suggestionsModel || {
       model: 'claude-sonnet-4-20250514',
     };
     const modelConfig = resolvePhaseModel(phaseModelEntry);
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
-            // Build the expansion prompt with World Model awareness
-            const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
+    // Build the expansion prompt with World Model awareness
+    const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
 
 ${ancestryContext}
 
@@ -3298,15 +3261,16 @@ Current Layer: ${parentWorldModelLayer !== undefined ? `Layer ${parentWorldModel
 Domain Context: ${domainContext}
 Focus Area: ${focusArea}
 
-${subspecTemplate
-                ? `SUBSPEC TEMPLATE (CONTRACT STATE):
+${
+  subspecTemplate
+    ? `SUBSPEC TEMPLATE (CONTRACT STATE):
 This specific branch operates under the following Persona/Contract.
 All generated concepts MUST strictly adhere to these rules:
 ----------------------------------------
 ${subspecTemplate}
 ----------------------------------------`
-                : ''
-              }
+    : ''
+}
 
 Rules:
 1. Generate ${depth * 3} concepts that are STRUCTURAL dependencies of "${seedTitle}"
@@ -3320,37 +3284,11 @@ ${externalContext ? `Additional Context:\n${externalContext}\n` : ''}
 Respond with a JSON array of objects:
 [{"title": "Concept Name", "rationale": "Why this is needed", "suggestedLayer": ${parentWorldModelLayer || 9}}]`;
 
-            const userPrompt = `Seed Concept: "${seedTitle}"
+    const userPrompt = `Seed Concept: "${seedTitle}"
 ${ancestryPath.length > 1 ? `Ancestry: ${ancestryPath.join(' → ')}` : ''}
 
 Generate ${depth * 3} structural dependencies for this concept.`;
 
-<<<<<<< HEAD
-            try {
-              // Use the provider to make the AI call
-              const providerFactory = await import('../providers/provider-factory.js');
-              const provider = await providerFactory.getProviderForModel(modelConfig.model, settings || {});
-
-              const response = await provider.chat({
-                model: modelConfig.model,
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: userPrompt },
-                ],
-                temperature: 0.7,
-                max_tokens: 2000,
-              });
-
-              // Parse the response
-              const content = response.choices?.[0]?.message?.content || '';
-
-              // Extract JSON from response
-              const jsonMatch = content.match(/\[[\s\S]*\]/);
-              if (!jsonMatch) {
-                console.error('Failed to parse expansion response:', content);
-                return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
-              }
-=======
     try {
       // Use the provider-agnostic QueryService
       const { getQueryService } = await import('@automaker/providers-core');
@@ -3368,23 +3306,21 @@ Generate ${depth * 3} structural dependencies for this concept.`;
         console.error('Failed to parse expansion response:', content);
         return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
       }
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
-              const rawTerms = JSON.parse(jsonMatch[0]);
+      const rawTerms = JSON.parse(jsonMatch[0]);
 
-              // Enhance terms with category info
-              const terms = rawTerms.map((term: any) => ({
-                title: term.title,
-                rationale: term.rationale,
-                category: parentCategory,
-                worldModelLayer: term.suggestedLayer || parentWorldModelLayer,
-              }));
+      // Enhance terms with category info
+      const terms = rawTerms.map((term: any) => ({
+        title: term.title,
+        rationale: term.rationale,
+        category: parentCategory,
+        worldModelLayer: term.suggestedLayer || parentWorldModelLayer,
+      }));
 
-              return { terms, parentCategory, parentWorldModelLayer, ancestryPath };
-            } catch (error) {
-              console.error('Knowledge graph expansion error:', error);
-              throw error;
-
-            }
-          }
-        }
+      return { terms, parentCategory, parentWorldModelLayer, ancestryPath };
+    } catch (error) {
+      console.error('Knowledge graph expansion error:', error);
+      throw error;
+    }
+  }
+}

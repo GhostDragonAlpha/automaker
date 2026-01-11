@@ -12,11 +12,7 @@
 import type { Request, Response } from 'express';
 import { getQueryService } from '@automaker/providers-core';
 import { createLogger } from '@automaker/utils';
-<<<<<<< HEAD
 import { DEFAULT_PHASE_MODELS, isCursorModel, stripProviderPrefix } from '@automaker/types';
-=======
-import { DEFAULT_PHASE_MODELS } from '@automaker/types';
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 import { PathNotAllowedError } from '@automaker/platform';
 import { resolvePhaseModel } from '@automaker/model-resolver';
 import * as secureFs from '../../../lib/secure-fs.js';
@@ -151,76 +147,12 @@ File: ${fileName}${truncated ? ' (truncated)' : ''}`;
 
       logger.info(`Using model: ${model}`);
 
-<<<<<<< HEAD
-      let description: string;
-
-      // Route to appropriate provider based on model type
-      if (isCursorModel(model)) {
-        // Use Cursor provider for Cursor models
-        logger.info(`Using Cursor provider for model: ${model}`);
-
-        const provider = ProviderFactory.getProviderForModel(model);
-        // Strip provider prefix - providers expect bare model IDs
-        const bareModel = stripProviderPrefix(model);
-
-        // Build a simple text prompt for Cursor (no multi-part content blocks)
-        const cursorPrompt = `${instructionText}\n\n--- FILE CONTENT ---\n${contentToAnalyze}`;
-
-        let responseText = '';
-        for await (const msg of provider.executeQuery({
-          prompt: cursorPrompt,
-          model: bareModel,
-          cwd,
-          maxTurns: 1,
-          allowedTools: [],
-          readOnly: true, // File description only reads, doesn't write
-        })) {
-          if (msg.type === 'assistant' && msg.message?.content) {
-            for (const block of msg.message.content) {
-              if (block.type === 'text' && block.text) {
-                responseText += block.text;
-              }
-            }
-          }
-        }
-        description = responseText;
-      } else {
-        // Use Claude SDK for Claude models
-        logger.info(`Using Claude SDK for model: ${model}`);
-
-        // Use centralized SDK options with proper cwd validation
-        // No tools needed since we're passing file content directly
-        const sdkOptions = createCustomOptions({
-          cwd,
-          model,
-          maxTurns: 1,
-          allowedTools: [],
-          autoLoadClaudeMd,
-          thinkingLevel, // Pass thinking level for extended thinking
-        });
-
-        const promptGenerator = (async function* () {
-          yield {
-            type: 'user' as const,
-            session_id: '',
-            message: { role: 'user' as const, content: promptContent },
-            parent_tool_use_id: null,
-          };
-        })();
-
-        const stream = query({ prompt: promptGenerator, options: sdkOptions });
-
-        // Extract the description from the response
-        description = await extractTextFromStream(stream);
-      }
-=======
       // Use provider-agnostic QueryService
       const queryService = getQueryService();
       const description = await queryService.simpleQuery(fullPrompt, {
         model,
         maxTokens: 200,
       });
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
       if (!description || description.trim().length === 0) {
         logger.warn('Received empty response from AI provider');

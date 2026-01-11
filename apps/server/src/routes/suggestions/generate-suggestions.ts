@@ -8,16 +8,12 @@
 import { getQueryService } from '@automaker/providers-core';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
-<<<<<<< HEAD
 import {
   DEFAULT_PHASE_MODELS,
   isCursorModel,
   stripProviderPrefix,
   type ThinkingLevel,
 } from '@automaker/types';
-=======
-import { DEFAULT_PHASE_MODELS, type ThinkingLevel } from '@automaker/types';
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 import { resolvePhaseModel } from '@automaker/model-resolver';
 import { extractJsonWithArray } from '../../lib/json-extractor.js';
 import { FeatureLoader } from '../../services/feature-loader.js';
@@ -203,27 +199,13 @@ Respond with a JSON object containing a "suggestions" array. Each suggestion sho
 - priority: number (1=high, 2=medium, 3=low)
 - reasoning: string
 
-<<<<<<< HEAD
-    const provider = ProviderFactory.getProviderForModel(model);
-    // Strip provider prefix - providers expect bare model IDs
-    const bareModel = stripProviderPrefix(model);
-=======
 Example format:
 {
   "suggestions": [
     {"category": "Performance", "description": "Add caching", "priority": 1, "reasoning": "Reduces load times"}
   ]
-}`;
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
+}
 
-  // Use provider-agnostic QueryService
-  logger.info('[Suggestions] Using QueryService');
-  events.emit('suggestions:event', {
-    type: 'suggestions_progress',
-    content: 'Analyzing project...',
-  });
-
-<<<<<<< HEAD
 CRITICAL INSTRUCTIONS:
 1. DO NOT write any files. Return the JSON in your response only.
 2. After analyzing the project, respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
@@ -233,106 +215,17 @@ ${JSON.stringify(suggestionsSchema, null, 2)}
 
 Your entire response should be valid JSON starting with { and ending with }. No text before or after.`;
 
-    for await (const msg of provider.executeQuery({
-      prompt: cursorPrompt,
-      model: bareModel,
-      cwd: projectPath,
-      maxTurns: 250,
-      allowedTools: ['Read', 'Glob', 'Grep'],
-      abortController,
-      readOnly: true, // Suggestions only reads code, doesn't write
-    })) {
-      if (msg.type === 'assistant' && msg.message?.content) {
-        for (const block of msg.message.content) {
-          if (block.type === 'text' && block.text) {
-            responseText += block.text;
-            events.emit('suggestions:event', {
-              type: 'suggestions_progress',
-              content: block.text,
-            });
-          } else if (block.type === 'tool_use') {
-            events.emit('suggestions:event', {
-              type: 'suggestions_tool',
-              tool: block.name,
-              input: block.input,
-            });
-          }
-        }
-      } else if (msg.type === 'result' && msg.subtype === 'success' && msg.result) {
-        // Use result if it's a final accumulated message (from Cursor provider)
-        logger.info('[Suggestions] Received result from Cursor, length:', msg.result.length);
-        logger.info('[Suggestions] Previous responseText length:', responseText.length);
-        if (msg.result.length > responseText.length) {
-          logger.info('[Suggestions] Using Cursor result (longer than accumulated text)');
-          responseText = msg.result;
-        } else {
-          logger.info('[Suggestions] Keeping accumulated text (longer than Cursor result)');
-        }
-      }
-    }
-  } else {
-    // Use Claude SDK for Claude models
-    logger.info('[Suggestions] Using Claude SDK');
+  // Use provider-agnostic QueryService
+  logger.info('[Suggestions] Using QueryService');
+  events.emit('suggestions:event', {
+    type: 'suggestions_progress',
+    content: 'Analyzing project...',
+  });
 
-    const options = createSuggestionsOptions({
-      cwd: projectPath,
-      abortController,
-      autoLoadClaudeMd,
-      model, // Pass the model from settings
-      thinkingLevel, // Pass thinking level for extended thinking
-      outputFormat: {
-        type: 'json_schema',
-        schema: suggestionsSchema,
-      },
-    });
-
-    const stream = query({ prompt, options });
-
-    for await (const msg of stream) {
-      if (msg.type === 'assistant' && msg.message.content) {
-        for (const block of msg.message.content) {
-          if (block.type === 'text') {
-            responseText += block.text;
-            events.emit('suggestions:event', {
-              type: 'suggestions_progress',
-              content: block.text,
-            });
-          } else if (block.type === 'tool_use') {
-            events.emit('suggestions:event', {
-              type: 'suggestions_tool',
-              tool: block.name,
-              input: block.input,
-            });
-          }
-        }
-      } else if (msg.type === 'result' && msg.subtype === 'success') {
-        // Check for structured output
-        const resultMsg = msg as any;
-        if (resultMsg.structured_output) {
-          structuredOutput = resultMsg.structured_output as {
-            suggestions: Array<Record<string, unknown>>;
-          };
-          logger.debug('Received structured output:', structuredOutput);
-        }
-      } else if (msg.type === 'result') {
-        const resultMsg = msg as any;
-        if (resultMsg.subtype === 'error_max_structured_output_retries') {
-          logger.error('Failed to produce valid structured output after retries');
-          throw new Error('Could not produce valid suggestions output');
-        } else if (resultMsg.subtype === 'error_max_turns') {
-          logger.error('Hit max turns limit before completing suggestions generation');
-          logger.warn(`Response text length: ${responseText.length} chars`);
-          // Still try to parse what we have
-        }
-      }
-    }
-  }
-=======
   const queryService = getQueryService();
   const responseText = await queryService.simpleQuery(fullPrompt, {
     model,
   });
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
   // Use structured output if available, otherwise fall back to parsing text
   try {
@@ -347,7 +240,7 @@ Your entire response should be valid JSON starting with { and ending with }. No 
         type: 'suggestions_complete',
         suggestions: parsed.suggestions.map((s: Record<string, unknown>, i: number) => ({
           ...s,
-          id: s.id || `suggestion-${Date.now()}-${i}`,
+          id: s.id || `suggestion - ${Date.now()} -${i} `,
         })),
       });
     } else {
@@ -361,7 +254,7 @@ Your entire response should be valid JSON starting with { and ending with }. No 
       type: 'suggestions_complete',
       suggestions: [
         {
-          id: `suggestion-${Date.now()}-0`,
+          id: `suggestion - ${Date.now()} -0`,
           category: 'Analysis',
           description: 'Review the AI analysis output for insights',
           priority: 1,
