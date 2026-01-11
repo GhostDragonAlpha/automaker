@@ -9,7 +9,11 @@ import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { getModelProvider, PROVIDER_PREFIXES, stripProviderPrefix } from '@automaker/types';
 import type { ModelProvider } from '@automaker/types';
+<<<<<<< HEAD
 import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, ModelOption } from './model-constants';
+=======
+import { CLAUDE_MODELS, CURSOR_MODELS, ZAI_MODELS, ModelOption } from './model-constants';
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
 interface ModelSelectorProps {
   selectedModel: string; // Can be ModelAlias or "cursor-{id}"
@@ -40,7 +44,7 @@ export function ModelSelector({
     return enabledCursorModels.includes(cursorModelId as any);
   });
 
-  const handleProviderChange = (provider: ModelProvider) => {
+  const handleProviderChange = (provider: ModelProvider | 'zai') => {
     if (provider === 'cursor' && selectedProvider !== 'cursor') {
       // Switch to Cursor's default model (from global settings)
       onModelSelect(`${PROVIDER_PREFIXES.cursor}${cursorDefaultModel}`);
@@ -50,8 +54,14 @@ export function ModelSelector({
     } else if (provider === 'claude' && selectedProvider !== 'claude') {
       // Switch to Claude's default model
       onModelSelect('sonnet');
+    } else if (provider === 'zai' && selectedProvider !== 'zai') {
+      // Switch to Z.AI's default model
+      onModelSelect('glm-4.5-flash');
     }
   };
+
+  // Determine if Z.AI is selected (check if model is a GLM model)
+  const isZaiSelected = selectedModel.startsWith('glm-');
 
   return (
     <div className="space-y-4">
@@ -89,6 +99,7 @@ export function ModelSelector({
           </button>
           <button
             type="button"
+<<<<<<< HEAD
             onClick={() => handleProviderChange('codex')}
             className={cn(
               'flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2',
@@ -100,6 +111,19 @@ export function ModelSelector({
           >
             <OpenAIIcon className="w-4 h-4" />
             Codex CLI
+=======
+            onClick={() => handleProviderChange('zai')}
+            className={cn(
+              'flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2',
+              isZaiSelected
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-background hover:bg-accent border-border'
+            )}
+            data-testid={`${testIdPrefix}-provider-zai`}
+          >
+            <Brain className="w-4 h-4" />
+            Z.AI
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
           </button>
         </div>
       </div>
@@ -135,6 +159,43 @@ export function ModelSelector({
                   data-testid={`${testIdPrefix}-${option.id}`}
                 >
                   {shortName}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Z.AI Models */}
+      {isZaiSelected && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-green-500" />
+              Z.AI Model
+            </Label>
+            <span className="text-[11px] px-2 py-0.5 rounded-full border border-green-500/40 text-green-600 dark:text-green-400">
+              GLM
+            </span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {ZAI_MODELS.map((option) => {
+              const isSelected = selectedModel === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onModelSelect(option.id)}
+                  title={option.description}
+                  className={cn(
+                    'flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors',
+                    isSelected
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-background hover:bg-accent border-input'
+                  )}
+                  data-testid={`${testIdPrefix}-${option.id}`}
+                >
+                  {option.label.replace('Z.AI ', '')}
                 </button>
               );
             })}

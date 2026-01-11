@@ -2,8 +2,7 @@
  * POST /context/describe-file endpoint - Generate description for a text file
  *
  * Uses AI to analyze a text file and generate a concise description
- * suitable for context file metadata. Model is configurable via
- * phaseModels.fileDescriptionModel in settings (defaults to Haiku).
+ * suitable for context file metadata. Uses the provider-agnostic QueryService.
  *
  * SECURITY: This endpoint validates file paths against ALLOWED_ROOT_DIRECTORY
  * and reads file content directly (not via Claude's Read tool) to prevent
@@ -11,17 +10,18 @@
  */
 
 import type { Request, Response } from 'express';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { getQueryService } from '@automaker/providers-core';
 import { createLogger } from '@automaker/utils';
+<<<<<<< HEAD
 import { DEFAULT_PHASE_MODELS, isCursorModel, stripProviderPrefix } from '@automaker/types';
+=======
+import { DEFAULT_PHASE_MODELS } from '@automaker/types';
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 import { PathNotAllowedError } from '@automaker/platform';
 import { resolvePhaseModel } from '@automaker/model-resolver';
-import { createCustomOptions } from '../../../lib/sdk-options.js';
-import { ProviderFactory } from '../../../providers/provider-factory.js';
 import * as secureFs from '../../../lib/secure-fs.js';
 import * as path from 'path';
 import type { SettingsService } from '../../../services/settings-service.js';
-import { getAutoLoadClaudeMdSetting } from '../../../lib/settings-helpers.js';
 
 const logger = createLogger('DescribeFile');
 
@@ -47,31 +47,6 @@ interface DescribeFileSuccessResponse {
 interface DescribeFileErrorResponse {
   success: false;
   error: string;
-}
-
-/**
- * Extract text content from Claude SDK response messages
- */
-async function extractTextFromStream(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  stream: AsyncIterable<any>
-): Promise<string> {
-  let responseText = '';
-
-  for await (const msg of stream) {
-    if (msg.type === 'assistant' && msg.message?.content) {
-      const blocks = msg.message.content as Array<{ type: string; text?: string }>;
-      for (const block of blocks) {
-        if (block.type === 'text' && block.text) {
-          responseText += block.text;
-        }
-      }
-    } else if (msg.type === 'result' && msg.subtype === 'success') {
-      responseText = msg.result || responseText;
-    }
-  }
-
-  return responseText;
 }
 
 /**
@@ -165,31 +140,18 @@ Respond with ONLY the description text, no additional formatting, preamble, or e
 
 File: ${fileName}${truncated ? ' (truncated)' : ''}`;
 
-      const promptContent = [
-        { type: 'text' as const, text: instructionText },
-        { type: 'text' as const, text: `\n\n--- FILE CONTENT ---\n${contentToAnalyze}` },
-      ];
-
-      // Use the file's directory as the working directory
-      const cwd = path.dirname(resolvedPath);
-
-      // Load autoLoadClaudeMd setting
-      const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
-        cwd,
-        settingsService,
-        '[DescribeFile]'
-      );
+      // Build prompt with file content
+      const fullPrompt = `${instructionText}\n\n--- FILE CONTENT ---\n${contentToAnalyze}`;
 
       // Get model from phase settings
       const settings = await settingsService?.getGlobalSettings();
-      logger.info(`Raw phaseModels from settings:`, JSON.stringify(settings?.phaseModels, null, 2));
       const phaseModelEntry =
         settings?.phaseModels?.fileDescriptionModel || DEFAULT_PHASE_MODELS.fileDescriptionModel;
-      logger.info(`fileDescriptionModel entry:`, JSON.stringify(phaseModelEntry));
-      const { model, thinkingLevel } = resolvePhaseModel(phaseModelEntry);
+      const { model } = resolvePhaseModel(phaseModelEntry);
 
-      logger.info(`Resolved model: ${model}, thinkingLevel: ${thinkingLevel}`);
+      logger.info(`Using model: ${model}`);
 
+<<<<<<< HEAD
       let description: string;
 
       // Route to appropriate provider based on model type
@@ -251,9 +213,17 @@ File: ${fileName}${truncated ? ' (truncated)' : ''}`;
         // Extract the description from the response
         description = await extractTextFromStream(stream);
       }
+=======
+      // Use provider-agnostic QueryService
+      const queryService = getQueryService();
+      const description = await queryService.simpleQuery(fullPrompt, {
+        model,
+        maxTokens: 200,
+      });
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
       if (!description || description.trim().length === 0) {
-        logger.warn('Received empty response from Claude');
+        logger.warn('Received empty response from AI provider');
         const response: DescribeFileErrorResponse = {
           success: false,
           error: 'Failed to generate description - empty response',

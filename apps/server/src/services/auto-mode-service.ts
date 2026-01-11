@@ -3181,6 +3181,7 @@ If nothing notable: {"learnings": []}`;
           subspecTemplate = '',
         } = options;
 
+<<<<<<< HEAD
         // Get provider settings
         const settings = this.settingsService?.getAll();
         const modelResolver = this.settingsService
@@ -3194,6 +3195,18 @@ If nothing notable: {"learnings": []}`;
     // Load all features to find the seed and build ancestry
     const allFeatures = await this.featureLoader.loadFeatures(projectPath);
         const seedFeature = allFeatures.find((f) => f.title === seedTitle);
+=======
+    // Get provider settings
+    const settings = await this.settingsService?.getGlobalSettings();
+
+    if (!this.settingsService) {
+      throw new Error('Settings service not available for knowledge graph expansion');
+    }
+
+    // Load all features to find the seed and build ancestry
+    const allFeatures = await this.featureLoader.getAll(projectPath);
+    const seedFeature = allFeatures.find((f: { title?: string }) => f.title === seedTitle);
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
         // Build ancestry path by following dependencies upward
         const ancestryPath: string[] = [];
@@ -3208,6 +3221,7 @@ If nothing notable: {"learnings": []}`;
           let current = seedFeature;
           const visited = new Set<string>();
 
+<<<<<<< HEAD
           while (current && !visited.has(current.id)) {
             visited.add(current.id);
             ancestryPath.unshift(current.title);
@@ -3222,13 +3236,42 @@ If nothing notable: {"learnings": []}`;
                 break;
               }
             }
+=======
+      while (current && !visited.has(current.id)) {
+        visited.add(current.id);
+        ancestryPath.unshift(current.title ?? '');
+
+        // Find parent via dependencies
+        if (current.dependencies && current.dependencies.length > 0) {
+          const parentId = current.dependencies[0];
+          const parent = allFeatures.find((f: { id: string }) => f.id === parentId);
+          if (parent) {
+            current = parent;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+    }
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
             // Build World Model context from ancestry
             const ancestryContext =
               ancestryPath.length > 0 ? `World Model Path: ${ancestryPath.join(' → ')}` : '';
 
+<<<<<<< HEAD
             // Resolve model
             const modelConfig = await modelResolver.resolveModel();
+=======
+    // Resolve model from settings
+    const { resolvePhaseModel } = await import('@automaker/model-resolver');
+    const phaseModelEntry = settings?.phaseModels?.suggestionsModel || {
+      model: 'claude-sonnet-4-20250514',
+    };
+    const modelConfig = resolvePhaseModel(phaseModelEntry);
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
             // Build the expansion prompt with World Model awareness
             const systemPrompt = `You are a knowledge graph architect for Chimera VR - a space simulation game.
@@ -3282,6 +3325,7 @@ ${ancestryPath.length > 1 ? `Ancestry: ${ancestryPath.join(' → ')}` : ''}
 
 Generate ${depth * 3} structural dependencies for this concept.`;
 
+<<<<<<< HEAD
             try {
               // Use the provider to make the AI call
               const providerFactory = await import('../providers/provider-factory.js');
@@ -3306,6 +3350,25 @@ Generate ${depth * 3} structural dependencies for this concept.`;
                 console.error('Failed to parse expansion response:', content);
                 return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
               }
+=======
+    try {
+      // Use the provider-agnostic QueryService
+      const { getQueryService } = await import('@automaker/providers-core');
+
+      const queryService = getQueryService();
+      const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+
+      const content = await queryService.simpleQuery(fullPrompt, {
+        model: modelConfig.model,
+      });
+
+      // Extract JSON from response
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.error('Failed to parse expansion response:', content);
+        return { terms: [], parentCategory, parentWorldModelLayer, ancestryPath };
+      }
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
               const rawTerms = JSON.parse(jsonMatch[0]);
 

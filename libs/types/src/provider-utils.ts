@@ -60,6 +60,7 @@ export function isClaudeModel(model: string | undefined | null): boolean {
 }
 
 /**
+<<<<<<< HEAD
  * Check if a model string represents a Codex/OpenAI model
  *
  * @param model - Model string to check (e.g., "gpt-5.2", "o1", "codex-gpt-5.2")
@@ -99,6 +100,8 @@ export function isCodexModel(model: string | undefined | null): boolean {
  * @param model - Model string to check (e.g., "opencode-sonnet", "opencode/big-pickle", "amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0")
  * @returns true if the model is an OpenCode model
  */
+ * @returns true if the model is an OpenCode model
+  */
 export function isOpencodeModel(model: string | undefined | null): boolean {
   if (!model || typeof model !== 'string') return false;
 
@@ -123,6 +126,19 @@ export function isOpencodeModel(model: string | undefined | null): boolean {
 }
 
 /**
+ * Check if a model string represents a Z.AI GLM model
+ *
+ * @param model - Model string to check (e.g., "glm-4.7", "glm-4.5-flash")
+ * @returns true if the model is a Z.AI GLM model
+ */
+export function isZaiModel(model: string | undefined | null): boolean {
+  if (!model || typeof model !== 'string') return false;
+
+  // Check if it starts with 'glm-' (Z.AI model prefix)
+  return model.startsWith('glm-');
+}
+
+/**
  * Get the provider for a model string
  *
  * @param model - Model string to check
@@ -140,6 +156,9 @@ export function getModelProvider(model: string | undefined | null): ModelProvide
   }
   if (isCursorModel(model)) {
     return 'cursor';
+  }
+  if (isZaiModel(model)) {
+    return 'zai';
   }
   return 'claude';
 }
@@ -267,9 +286,9 @@ export function validateBareModelId(model: string, providerName: string): void {
     if (model.startsWith(prefix)) {
       throw new Error(
         `[${providerName}] Model ID should not contain provider prefix '${prefix}'. ` +
-          `Got: '${model}'. ` +
-          `This is likely a bug in ProviderFactory - it should strip the '${provider}' prefix ` +
-          `before passing the model to the provider.`
+        `Got: '${model}'. ` +
+        `This is likely a bug in ProviderFactory - it should strip the '${provider}' prefix ` +
+        `before passing the model to the provider.`
       );
     }
   }

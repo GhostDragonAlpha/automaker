@@ -366,8 +366,15 @@ export function AddFeatureDialog({
       const result = await api.enhancePrompt?.enhance(
         description,
         enhancementMode,
+<<<<<<< HEAD
         enhancementOverride.effectiveModel,
         enhancementOverride.effectiveModelEntry.thinkingLevel
+=======
+        // Only pass the model if it's explicitly overridden.
+        // Otherwise pass undefined so the backend uses its configured default (e.g. Z.AI)
+        enhancementOverride.isOverridden ? enhancementOverride.effectiveModel : undefined,
+        enhancementOverride.effectiveModelEntry.thinkingLevel // Pass thinking level
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
       );
 
       if (result?.success && result.enhancedText) {

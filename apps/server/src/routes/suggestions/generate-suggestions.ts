@@ -2,27 +2,28 @@
  * Business logic for generating suggestions
  *
  * Model is configurable via phaseModels.suggestionsModel in settings
- * (AI Suggestions in the UI). Supports both Claude and Cursor models.
+ * (AI Suggestions in the UI). Uses the provider-agnostic QueryService.
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { getQueryService } from '@automaker/providers-core';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
+<<<<<<< HEAD
 import {
   DEFAULT_PHASE_MODELS,
   isCursorModel,
   stripProviderPrefix,
   type ThinkingLevel,
 } from '@automaker/types';
+=======
+import { DEFAULT_PHASE_MODELS, type ThinkingLevel } from '@automaker/types';
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 import { resolvePhaseModel } from '@automaker/model-resolver';
-import { createSuggestionsOptions } from '../../lib/sdk-options.js';
 import { extractJsonWithArray } from '../../lib/json-extractor.js';
-import { ProviderFactory } from '../../providers/provider-factory.js';
 import { FeatureLoader } from '../../services/feature-loader.js';
 import { getAppSpecPath } from '@automaker/platform';
 import * as secureFs from '../../lib/secure-fs.js';
 import type { SettingsService } from '../../services/settings-service.js';
-import { getAutoLoadClaudeMdSetting } from '../../lib/settings-helpers.js';
 
 const logger = createLogger('Suggestions');
 
@@ -171,18 +172,10 @@ The response will be automatically formatted as structured JSON.`;
   // Don't send initial message - let the agent output speak for itself
   // The first agent message will be captured as an info entry
 
-  // Load autoLoadClaudeMd setting
-  const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
-    projectPath,
-    settingsService,
-    '[Suggestions]'
-  );
-
   // Get model from phase settings (AI Suggestions = suggestionsModel)
   // Use override if provided, otherwise fall back to settings
   const settings = await settingsService?.getGlobalSettings();
   let model: string;
-  let thinkingLevel: ThinkingLevel | undefined;
 
   if (modelOverride) {
     // Use explicit override - resolve the model string
@@ -191,33 +184,46 @@ The response will be automatically formatted as structured JSON.`;
       thinkingLevel: thinkingLevelOverride,
     });
     model = resolved.model;
-    thinkingLevel = resolved.thinkingLevel;
   } else {
     // Use settings-based model
     const phaseModelEntry =
       settings?.phaseModels?.suggestionsModel || DEFAULT_PHASE_MODELS.suggestionsModel;
     const resolved = resolvePhaseModel(phaseModelEntry);
     model = resolved.model;
-    thinkingLevel = resolved.thinkingLevel;
   }
 
   logger.info('[Suggestions] Using model:', model);
 
-  let responseText = '';
-  let structuredOutput: { suggestions: Array<Record<string, unknown>> } | null = null;
+  // Build prompt with JSON schema instructions
+  const fullPrompt = `${prompt}
 
-  // Route to appropriate provider based on model type
-  if (isCursorModel(model)) {
-    // Use Cursor provider for Cursor models
-    logger.info('[Suggestions] Using Cursor provider');
+Respond with a JSON object containing a "suggestions" array. Each suggestion should have:
+- category: string
+- description: string
+- priority: number (1=high, 2=medium, 3=low)
+- reasoning: string
 
+<<<<<<< HEAD
     const provider = ProviderFactory.getProviderForModel(model);
     // Strip provider prefix - providers expect bare model IDs
     const bareModel = stripProviderPrefix(model);
+=======
+Example format:
+{
+  "suggestions": [
+    {"category": "Performance", "description": "Add caching", "priority": 1, "reasoning": "Reduces load times"}
+  ]
+}`;
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
-    // For Cursor, include the JSON schema in the prompt with clear instructions
-    const cursorPrompt = `${prompt}
+  // Use provider-agnostic QueryService
+  logger.info('[Suggestions] Using QueryService');
+  events.emit('suggestions:event', {
+    type: 'suggestions_progress',
+    content: 'Analyzing project...',
+  });
 
+<<<<<<< HEAD
 CRITICAL INSTRUCTIONS:
 1. DO NOT write any files. Return the JSON in your response only.
 2. After analyzing the project, respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
@@ -321,37 +327,31 @@ Your entire response should be valid JSON starting with { and ending with }. No 
       }
     }
   }
+=======
+  const queryService = getQueryService();
+  const responseText = await queryService.simpleQuery(fullPrompt, {
+    model,
+  });
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
   // Use structured output if available, otherwise fall back to parsing text
   try {
-    if (structuredOutput && structuredOutput.suggestions) {
-      // Use structured output directly
+    // Parse JSON from the text response
+    const parsed = extractJsonWithArray<{ suggestions: Array<Record<string, unknown>> }>(
+      responseText,
+      'suggestions',
+      { logger }
+    );
+    if (parsed && parsed.suggestions) {
       events.emit('suggestions:event', {
         type: 'suggestions_complete',
-        suggestions: structuredOutput.suggestions.map((s: Record<string, unknown>, i: number) => ({
+        suggestions: parsed.suggestions.map((s: Record<string, unknown>, i: number) => ({
           ...s,
           id: s.id || `suggestion-${Date.now()}-${i}`,
         })),
       });
     } else {
-      // Fallback: try to parse from text using shared extraction utility
-      logger.warn('No structured output received, attempting to parse from text');
-      const parsed = extractJsonWithArray<{ suggestions: Array<Record<string, unknown>> }>(
-        responseText,
-        'suggestions',
-        { logger }
-      );
-      if (parsed && parsed.suggestions) {
-        events.emit('suggestions:event', {
-          type: 'suggestions_complete',
-          suggestions: parsed.suggestions.map((s: Record<string, unknown>, i: number) => ({
-            ...s,
-            id: s.id || `suggestion-${Date.now()}-${i}`,
-          })),
-        });
-      } else {
-        throw new Error('No valid JSON found in response');
-      }
+      throw new Error('No valid JSON found in response');
     }
   } catch (error) {
     // Log the parsing error for debugging

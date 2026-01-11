@@ -1,14 +1,15 @@
 /**
  * POST /enhance-prompt endpoint - Enhance user input text
  *
- * Uses Claude AI or Cursor to enhance text based on the specified enhancement mode.
+ * Uses the configured AI provider or Cursor to enhance text based on the specified enhancement mode.
  * Supports modes: improve, technical, simplify, acceptance
  */
 
 import type { Request, Response } from 'express';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { getQueryService } from '@automaker/providers-core';
 import { createLogger } from '@automaker/utils';
 import { resolveModelString } from '@automaker/model-resolver';
+<<<<<<< HEAD
 import {
   CLAUDE_MODEL_MAP,
   isCursorModel,
@@ -16,6 +17,9 @@ import {
   ThinkingLevel,
   getThinkingTokenBudget,
 } from '@automaker/types';
+=======
+import { CLAUDE_MODEL_MAP, isCursorModel } from '@automaker/types';
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 import { ProviderFactory } from '../../../providers/provider-factory.js';
 import type { SettingsService } from '../../../services/settings-service.js';
 import { getPromptCustomization } from '../../../lib/settings-helpers.js';
@@ -37,8 +41,6 @@ interface EnhanceRequestBody {
   enhancementMode: string;
   /** Optional model override */
   model?: string;
-  /** Optional thinking level for Claude models (ignored for Cursor models) */
-  thinkingLevel?: ThinkingLevel;
 }
 
 /**
@@ -57,38 +59,7 @@ interface EnhanceErrorResponse {
   error: string;
 }
 
-/**
- * Extract text content from Claude SDK response messages
- *
- * @param stream - The async iterable from the query function
- * @returns The extracted text content
- */
-async function extractTextFromStream(
-  stream: AsyncIterable<{
-    type: string;
-    subtype?: string;
-    result?: string;
-    message?: {
-      content?: Array<{ type: string; text?: string }>;
-    };
-  }>
-): Promise<string> {
-  let responseText = '';
-
-  for await (const msg of stream) {
-    if (msg.type === 'assistant' && msg.message?.content) {
-      for (const block of msg.message.content) {
-        if (block.type === 'text' && block.text) {
-          responseText += block.text;
-        }
-      }
-    } else if (msg.type === 'result' && msg.subtype === 'success') {
-      responseText = msg.result || responseText;
-    }
-  }
-
-  return responseText;
-}
+// Note: extractTextFromStream removed - now using QueryService.simpleQuery()
 
 /**
  * Execute enhancement using Cursor provider
@@ -138,8 +109,7 @@ export function createEnhanceHandler(
 ): (req: Request, res: Response) => Promise<void> {
   return async (req: Request, res: Response): Promise<void> => {
     try {
-      const { originalText, enhancementMode, model, thinkingLevel } =
-        req.body as EnhanceRequestBody;
+      const { originalText, enhancementMode, model } = req.body as EnhanceRequestBody;
 
       // Validate required fields
       if (!originalText || typeof originalText !== 'string') {
@@ -197,8 +167,9 @@ export function createEnhanceHandler(
       // This helps the model understand this is text transformation, not a coding task
       const userPrompt = buildUserPrompt(validMode, trimmedText, true);
 
-      // Resolve the model - use the passed model, default to sonnet for quality
-      const resolvedModel = resolveModelString(model, CLAUDE_MODEL_MAP.sonnet);
+      // Resolve the model - use the passed model, default to env var or sonnet for quality
+      const defaultModel = process.env.DEFAULT_AI_MODEL || CLAUDE_MODEL_MAP.sonnet;
+      const resolvedModel = resolveModelString(model, defaultModel);
 
       logger.debug(`Using model: ${resolvedModel}`);
 
@@ -213,28 +184,14 @@ export function createEnhanceHandler(
         const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
         enhancedText = await executeWithCursor(combinedPrompt, resolvedModel);
       } else {
-        // Use Claude SDK for Claude models
-        logger.info(`Using Claude provider for model: ${resolvedModel}`);
+        // Use the provider-agnostic QueryService
+        logger.info(`Using QueryService provider for model: ${resolvedModel}`);
 
-        // Convert thinkingLevel to maxThinkingTokens for SDK
-        const maxThinkingTokens = getThinkingTokenBudget(thinkingLevel);
-        const queryOptions: Parameters<typeof query>[0]['options'] = {
-          model: resolvedModel,
+        const queryService = getQueryService();
+        enhancedText = await queryService.simpleQuery(userPrompt, {
           systemPrompt,
-          maxTurns: 1,
-          allowedTools: [],
-          permissionMode: 'acceptEdits',
-        };
-        if (maxThinkingTokens) {
-          queryOptions.maxThinkingTokens = maxThinkingTokens;
-        }
-
-        const stream = query({
-          prompt: userPrompt,
-          options: queryOptions,
+          model: resolvedModel,
         });
-
-        enhancedText = await extractTextFromStream(stream);
       }
 
       if (!enhancedText || enhancedText.trim().length === 0) {

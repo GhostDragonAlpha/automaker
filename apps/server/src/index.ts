@@ -66,6 +66,8 @@ import { pipelineService } from './services/pipeline-service.js';
 import { createIdeationRoutes } from './routes/ideation/index.js';
 import { IdeationService } from './services/ideation-service.js';
 
+// Providers will be loaded dynamically after environment setup
+
 // Load environment variables
 dotenv.config();
 
@@ -174,6 +176,20 @@ const ideationService = new IdeationService(events, settingsService, featureLoad
 
 // Initialize services
 (async () => {
+  // Enforce Z.AI priority by disabling Claude if Z.AI key is present
+  if (process.env.ZAI_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
+      logger.info(
+        'Detected Z.AI Key: Explicitly disabling Claude provider by unsetting ANTHROPIC_API_KEY'
+      );
+      delete process.env.ANTHROPIC_API_KEY;
+    }
+  }
+
+  // Load providers dynamically to ensure they see the updated environment
+  await import('@automaker/provider-claude');
+  await import('@automaker/provider-zai');
+
   await agentService.initialize();
   logger.info('Agent service initialized');
 })();

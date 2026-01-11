@@ -66,7 +66,7 @@ export const DEFAULT_MODELS = {
   codex: CODEX_MODEL_MAP.gpt52Codex, // GPT-5.2-Codex is the most advanced agentic coding model
 } as const;
 
-export type ModelAlias = keyof typeof CLAUDE_MODEL_MAP;
+export type ModelAlias = keyof typeof CLAUDE_MODEL_MAP | keyof typeof ZAI_MODEL_MAP;
 export type CodexModelId = (typeof CODEX_MODEL_MAP)[keyof typeof CODEX_MODEL_MAP];
 
 /**
@@ -74,3 +74,16 @@ export type CodexModelId = (typeof CODEX_MODEL_MAP)[keyof typeof CODEX_MODEL_MAP
  * Represents available models across providers
  */
 export type AgentModel = ModelAlias | CodexModelId;
+
+/**
+ * Model alias mapping for Z.AI models
+ */
+export const ZAI_MODEL_MAP = {
+  'glm-4-plus': 'glm-4-plus',
+  'glm-4.7': 'glm-4.7',
+  'glm-4.6': 'glm-4.6',
+  'glm-4.5': 'glm-4.5',
+  'glm-4.5-air': 'glm-4.5-air',
+  'glm-4.5-flash': 'glm-4.5-flash',
+  'glm-4.6v': 'glm-4.6v',
+} as const;

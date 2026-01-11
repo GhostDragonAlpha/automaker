@@ -1,0 +1,36 @@
+{
+  "name": "@automaker/provider-claude",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Claude/Anthropic provider for AutoMaker - wraps @anthropic-ai/claude-agent-sdk",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "automaker",
+    "provider",
+    "claude",
+    "anthropic",
+    "ai"
+  ],
+  "author": "AutoMaker Team",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "dependencies": {
+    "@automaker/providers-core": "1.0.0",
+    "@automaker/types": "1.0.0",
+    "@anthropic-ai/claude-agent-sdk": "0.1.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.3",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/claude-agent-sdk": ">=0.1.0"
+  }
+}

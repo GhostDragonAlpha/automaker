@@ -1,0 +1,30 @@
+{
+  "name": "@automaker/providers-core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Core provider infrastructure for AutoMaker - abstractions for AI provider integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "automaker",
+    "providers",
+    "ai",
+    "abstraction"
+  ],
+  "author": "AutoMaker Team",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "dependencies": {
+    "@automaker/types": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.3",
+    "typescript": "5.9.3"
+  }
+}

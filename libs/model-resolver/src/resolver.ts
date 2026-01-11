@@ -11,7 +11,11 @@
 import {
   CLAUDE_MODEL_MAP,
   CURSOR_MODEL_MAP,
+<<<<<<< HEAD
   CODEX_MODEL_MAP,
+=======
+  ZAI_MODEL_MAP,
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   DEFAULT_MODELS,
   PROVIDER_PREFIXES,
   isCursorModel,
@@ -65,6 +69,12 @@ export function resolveModelString(
   // Codex model with explicit prefix (e.g., "codex-gpt-5.1-codex-max") - pass through unchanged
   if (modelKey.startsWith(PROVIDER_PREFIXES.codex)) {
     console.log(`[ModelResolver] Using Codex model: ${modelKey}`);
+    return modelKey;
+  }
+
+  // Check if it's a Z.AI model (e.g., "glm-4.7")
+  if (modelKey in ZAI_MODEL_MAP) {
+    console.log(`[ModelResolver] Resolved Z.AI model: "${modelKey}"`);
     return modelKey;
   }
 

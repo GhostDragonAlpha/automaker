@@ -1,0 +1,33 @@
+{
+  "name": "@automaker/provider-zai",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Z.AI GLM provider for AutoMaker - uses OpenAI-compatible API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "automaker",
+    "provider",
+    "zai",
+    "glm",
+    "ai"
+  ],
+  "author": "AutoMaker Team",
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "dependencies": {
+    "@automaker/providers-core": "1.0.0",
+    "@automaker/types": "1.0.0",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -23,8 +23,12 @@ import {
 import {
   CLAUDE_MODELS,
   CURSOR_MODELS,
+<<<<<<< HEAD
   CODEX_MODELS,
   OPENCODE_MODELS,
+=======
+  ZAI_MODELS,
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   THINKING_LEVELS,
   THINKING_LEVEL_LABELS,
   REASONING_EFFORT_LEVELS,
@@ -179,6 +183,14 @@ export function PhaseModelSelector({
       };
     }
 
+    const zaiModel = ZAI_MODELS.find((m) => m.id === selectedModel);
+    if (zaiModel) {
+      return {
+        ...zaiModel,
+        icon: Sparkles, // Or another icon
+      };
+    }
+
     const cursorModel = availableCursorModels.find(
       (m) => stripProviderPrefix(m.id) === selectedModel
     );
@@ -242,12 +254,20 @@ export function PhaseModelSelector({
   }, [availableCursorModels, enabledCursorModels]);
 
   // Group models
+<<<<<<< HEAD
   const { favorites, claude, cursor, codex, opencode } = React.useMemo(() => {
     const favs: typeof CLAUDE_MODELS = [];
     const cModels: typeof CLAUDE_MODELS = [];
     const curModels: typeof CURSOR_MODELS = [];
     const codModels: typeof CODEX_MODELS = [];
     const ocModels: typeof OPENCODE_MODELS = [];
+=======
+  const { favorites, claude, cursor, zai } = React.useMemo(() => {
+    const favs: typeof CLAUDE_MODELS = [];
+    const cModels: typeof CLAUDE_MODELS = [];
+    const curModels: typeof CURSOR_MODELS = [];
+    const zModels: typeof ZAI_MODELS = [];
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
     // Process Claude Models
     CLAUDE_MODELS.forEach((model) => {
@@ -255,6 +275,15 @@ export function PhaseModelSelector({
         favs.push(model);
       } else {
         cModels.push(model);
+      }
+    });
+
+    // Process Z.AI Models
+    ZAI_MODELS.forEach((model) => {
+      if (favoriteModels.includes(model.id)) {
+        favs.push(model);
+      } else {
+        zModels.push(model);
       }
     });
 
@@ -267,6 +296,7 @@ export function PhaseModelSelector({
       }
     });
 
+<<<<<<< HEAD
     // Process Codex Models
     CODEX_MODELS.forEach((model) => {
       if (favoriteModels.includes(model.id)) {
@@ -292,6 +322,9 @@ export function PhaseModelSelector({
       codex: codModels,
       opencode: ocModels,
     };
+=======
+    return { favorites: favs, claude: cModels, cursor: curModels, zai: zModels };
+>>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   }, [favoriteModels, availableCursorModels]);
 
   // Render Codex model item with secondary popover for reasoning effort (only for models that support it)
@@ -829,6 +862,62 @@ export function PhaseModelSelector({
     );
   };
 
+  // Render Z.AI model item
+  const renderZaiModelItem = (model: (typeof ZAI_MODELS)[0]) => {
+    const isSelected = selectedModel === model.id;
+    const isFavorite = favoriteModels.includes(model.id);
+
+    return (
+      <CommandItem
+        key={model.id}
+        value={model.label}
+        onSelect={() => {
+          onChange({
+            model: model.id as ModelAlias,
+            thinkingLevel: 'none',
+          });
+          setOpen(false);
+        }}
+        className="group flex items-center justify-between py-2"
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <Sparkles
+            className={cn(
+              'h-4 w-4 shrink-0',
+              isSelected ? 'text-primary' : 'text-muted-foreground'
+            )}
+          />
+          <div className="flex flex-col truncate">
+            <span className={cn('truncate font-medium', isSelected && 'text-primary')}>
+              {model.label}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">{model.description}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 ml-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              'h-6 w-6 hover:bg-transparent hover:text-yellow-500 focus:ring-0',
+              isFavorite
+                ? 'text-yellow-500 opacity-100'
+                : 'opacity-0 group-hover:opacity-100 text-muted-foreground'
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavoriteModel(model.id);
+            }}
+          >
+            <Star className={cn('h-3.5 w-3.5', isFavorite && 'fill-current')} />
+          </Button>
+          {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+        </div>
+      </CommandItem>
+    );
+  };
+
   // Compact trigger button (for agent view etc.)
   const compactTrigger = (
     <Button
@@ -926,7 +1015,11 @@ export function PhaseModelSelector({
                       return renderOpencodeModelItem(model);
                     }
                     // Claude model
-                    return renderClaudeModelItem(model);
+                    if (model.provider === 'claude') {
+                      return renderClaudeModelItem(model);
+                    }
+                    // Z.AI model
+                    return renderZaiModelItem(model as (typeof ZAI_MODELS)[0]);
                   });
                 })()}
               </CommandGroup>
@@ -937,6 +1030,12 @@ export function PhaseModelSelector({
           {claude.length > 0 && (
             <CommandGroup heading="Claude Models">
               {claude.map((model) => renderClaudeModelItem(model))}
+            </CommandGroup>
+          )}
+
+          {zai.length > 0 && (
+            <CommandGroup heading="Z.AI Models">
+              {zai.map((model) => renderZaiModelItem(model))}
             </CommandGroup>
           )}
 
