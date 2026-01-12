@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useDeferredValue } from 'react';
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import {
   ChevronDown,
