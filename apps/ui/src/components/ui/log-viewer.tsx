@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import {
   ChevronDown,
   ChevronRight,
@@ -23,6 +24,7 @@ import {
   Circle,
   Play,
   Loader2,
+  ArrowDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -320,7 +322,7 @@ function LogEntryItem({ entry, isExpanded, onToggle }: LogEntryItemProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border transition-all duration-200',
+        'rounded-lg border transition-all duration-200 mb-2',
         bgColor,
         borderColor,
         'hover:brightness-110'
@@ -410,6 +412,8 @@ export function LogViewer({ output, className }: LogViewerProps) {
   const [hiddenCategories, setHiddenCategories] = useState<Set<ToolCategory>>(new Set());
   // Track if user has "Expand All" mode active - new entries will auto-expand when this is true
   const [expandAllMode, setExpandAllMode] = useState(false);
+  const [atBottom, setAtBottom] = useState(true);
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   // Parse entries and compute initial expanded state together
   const { entries, initialExpandedIds } = useMemo(() => {
@@ -526,13 +530,11 @@ export function LogViewer({ output, className }: LogViewerProps) {
   };
 
   const expandAll = () => {
-    // Enable expand all mode so new entries will also be expanded
     setExpandAllMode(true);
     setExpandedIds(new Set(filteredEntries.map((e) => e.id)));
   };
 
   const collapseAll = () => {
-    // Disable expand all mode when collapsing all
     setExpandAllMode(false);
     setExpandedIds(new Set());
   };
@@ -568,6 +570,20 @@ export function LogViewer({ output, className }: LogViewerProps) {
   };
 
   const hasActiveFilters = searchQuery || hiddenTypes.size > 0 || hiddenCategories.size > 0;
+
+  // Auto-scroll logic
+  useEffect(() => {
+    if (atBottom && virtuosoRef.current) {
+      // Small timeout to allow render to complete
+      setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: filteredEntries.length - 1,
+          align: 'end',
+          behavior: 'smooth',
+        });
+      }, 50);
+    }
+  }, [filteredEntries.length, atBottom]);
 
   if (entries.length === 0) {
     return (
@@ -607,12 +623,11 @@ export function LogViewer({ output, className }: LogViewerProps) {
   ];
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn('flex flex-col h-full', className)}>
       {/* Sticky header with search, stats, and filters */}
-      {/* Use -top-4 to compensate for parent's p-4 padding, pt-4 to restore visual spacing */}
-      <div className="sticky -top-4 z-10 bg-zinc-950/95 backdrop-blur-sm pt-4 pb-2 space-y-2 -mx-4 px-4">
+      <div className="flex-none bg-zinc-950/95 backdrop-blur-sm pt-4 pb-2 space-y-2 px-1 border-b border-zinc-800/50 mb-2">
         {/* Search bar */}
-        <div className="flex items-center gap-2 px-1" data-testid="log-search-bar">
+        <div className="flex items-center gap-2" data-testid="log-search-bar">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <input
@@ -647,7 +662,7 @@ export function LogViewer({ output, className }: LogViewerProps) {
 
         {/* Tool category stats bar */}
         {stats.total > 0 && (
-          <div className="flex items-center gap-1 px-1 flex-wrap" data-testid="log-stats-bar">
+          <div className="flex items-center gap-1 flex-wrap" data-testid="log-stats-bar">
             <span className="text-xs text-zinc-500 mr-1">
               <Wrench className="w-3 h-3 inline mr-1" />
               {stats.total} tools:
@@ -684,7 +699,7 @@ export function LogViewer({ output, className }: LogViewerProps) {
         )}
 
         {/* Header with type filters and controls */}
-        <div className="flex items-center justify-between px-1" data-testid="log-viewer-header">
+        <div className="flex items-center justify-between" data-testid="log-viewer-header">
           <div className="flex items-center gap-1 flex-wrap">
             <Filter className="w-3 h-3 text-zinc-500 mr-1" />
             {Object.entries(typeCounts).map(([type, count]) => {
@@ -737,8 +752,8 @@ export function LogViewer({ output, className }: LogViewerProps) {
         </div>
       </div>
 
-      {/* Log entries */}
-      <div className="space-y-2 mt-2" data-testid="log-entries-container">
+      {/* Log entries (Virtual) */}
+      <div className="flex-1 min-h-0" data-testid="log-entries-container">
         {filteredEntries.length === 0 ? (
           <div className="text-center py-4 text-zinc-500 text-sm">
             No entries match your filters.
@@ -749,16 +764,41 @@ export function LogViewer({ output, className }: LogViewerProps) {
             )}
           </div>
         ) : (
-          filteredEntries.map((entry) => (
-            <LogEntryItem
-              key={entry.id}
-              entry={entry}
-              isExpanded={effectiveExpandedIds.has(entry.id)}
-              onToggle={() => toggleEntry(entry.id)}
-            />
-          ))
+          <Virtuoso
+            ref={virtuosoRef}
+            data={filteredEntries}
+            atBottomStateChange={setAtBottom}
+            totalCount={filteredEntries.length}
+            initialTopMostItemIndex={filteredEntries.length - 1}
+            followOutput={'smooth'}
+            itemContent={(index, entry) => (
+              <div className="px-1 py-0.5">
+                <LogEntryItem
+                  entry={entry}
+                  isExpanded={effectiveExpandedIds.has(entry.id)}
+                  onToggle={() => toggleEntry(entry.id)}
+                />
+              </div>
+            )}
+            className="h-full scrollbar-styled"
+          />
         )}
       </div>
+
+      {!atBottom && (
+        <button
+          onClick={() => {
+            virtuosoRef.current?.scrollToIndex({
+              index: filteredEntries.length - 1,
+              align: 'end',
+              behavior: 'smooth',
+            });
+          }}
+          className="absolute bottom-4 right-8 bg-primary text-primary-foreground p-2 rounded-full shadow-lg z-20 hover:bg-primary/90 transition-all animate-in fade-in zoom-in"
+        >
+          <ArrowDown className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }
