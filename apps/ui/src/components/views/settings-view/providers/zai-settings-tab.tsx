@@ -1,3 +1,17 @@
+/**
+ * Z.AI Settings Tab Component
+ *
+ * Settings panel for configuring Z.AI (ZhiPu AI) integration.
+ * Allows users to:
+ * - Enter and save their Z.AI API key
+ * - View available GLM-4 models
+ *
+ * The API key is stored securely via the Electron setup API
+ * and synced with the global app state.
+ *
+ * @module ZaiSettingsTab
+ */
+
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/app-store';

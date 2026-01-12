@@ -1,3 +1,18 @@
+/**
+ * Provider Icon Components
+ *
+ * SVG icon components for AI model providers (Anthropic, OpenAI, Cursor, Gemini, Grok, Z.AI).
+ * Each icon uses official brand SVG paths for accurate representation.
+ *
+ * Features:
+ * - Individual icon components (AnthropicIcon, OpenAIIcon, etc.)
+ * - Generic ProviderIcon component accepting a provider key
+ * - getProviderIconForModel() - resolves model string to appropriate icon
+ * - Full accessibility support (title, aria-label, role)
+ *
+ * @module ProviderIcons
+ */
+
 import type { ComponentType, SVGProps } from 'react';
 import { Cpu } from 'lucide-react';
 import { cn } from '@/lib/utils';

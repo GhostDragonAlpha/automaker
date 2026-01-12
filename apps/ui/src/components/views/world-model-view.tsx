@@ -1,3 +1,18 @@
+/**
+ * World Model View Component
+ *
+ * Provides a native React Flow graph visualization of the project's feature backlog.
+ * This view presents features as interconnected nodes in a dependency graph,
+ * allowing users to:
+ * - View all spec cards as graph nodes with dependency edges
+ * - Start/stop/resume feature implementations
+ * - Create new features and spawn sub-features
+ * - Smart Expand features using AI-generated decomposition
+ * - Access agent output and plan approval workflows
+ *
+ * @module WorldModelView
+ */
+
 import { useCallback, useState, useMemo, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useAppStore, Feature } from '@/store/app-store';
