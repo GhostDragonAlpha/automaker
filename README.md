@@ -73,9 +73,9 @@ Traditional development tools help you write code. Automaker helps you **orchest
 4. **Review & Verify** - Review the changes, run tests, and approve when ready
 5. **Ship Faster** - Build entire applications in days, not weeks
 
-### Powered by Claude Agent SDK
+### Powered by Claude Agent SDK & Z.AI
 
-Automaker leverages the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) to give AI agents full access to your codebase. Agents can read files, write code, execute commands, run tests, and make git commits—all while working in isolated git worktrees to keep your main branch safe. The SDK provides autonomous AI agents that can use tools, make decisions, and complete complex multi-step tasks without constant human intervention.
+Automaker leverages the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk) and proprietary **Z.AI Provider** to give AI agents full access to your codebase. Configure agents to use Anthropic's Claude 3.5 Sonnet or **Z.AI's GLM-4** models for powerful, reasoning-first development. Agents can read files, write code, execute commands, run tests, and make git commits—all while working in isolated git worktrees to keep your main branch safe. The SDK provides autonomous AI agents that can use tools, make decisions, and complete complex multi-step tasks without constant human intervention.
 
 ### Why This Matters
 
@@ -130,7 +130,8 @@ npm run dev
 **Authentication Setup:** On first run, Automaker will automatically show a setup wizard where you can configure authentication. You can choose to:
 
 - Use **Claude Code CLI** (recommended) - Automaker will detect your CLI credentials automatically
-- Enter an **API key** directly in the wizard
+- Enter an **Anthropic API key** directly in the wizard
+- Enter a **Z.AI API key** directly in the wizard (for Z.AI models)
 
 If you prefer to set up authentication before running (e.g., for headless deployments or CI/CD), you can set it manually:
 
@@ -412,7 +413,7 @@ The application can store your API key securely in the settings UI. The key is p
 
 ### AI & Planning
 
-- 🧠 **Multi-Model Support** - Choose from Claude Opus, Sonnet, and Haiku per feature
+- 🧠 **Multi-Model Support** - Choose from Claude Opus, Sonnet, Haiku, or **Z.AI GLM-4** per feature
 - 💭 **Extended Thinking** - Enable thinking modes (none, medium, deep, ultra) for complex problem-solving
 - 📝 **Planning Modes** - Four planning levels: skip (direct implementation), lite (quick plan), spec (task breakdown), full (phased execution)
 - ✅ **Plan Approval** - Review and approve AI-generated plans before implementation begins
@@ -477,6 +478,7 @@ The application can store your API key securely in the settings UI. The key is p
 - **Express 5** - HTTP server framework
 - **TypeScript 5.9** - Type safety
 - **Claude Agent SDK** - AI agent integration (@anthropic-ai/claude-agent-sdk)
+- **Z.AI Provider** - Custom integration for Z.AI models
 - **WebSocket (ws)** - Real-time event streaming
 - **node-pty** - PTY terminal sessions
 
