@@ -33,27 +33,43 @@ async function getGhStatus(): Promise<GhStatus> {
     user: null,
   };
 
+  // Check if gh CLI is installed
   const isWindows = process.platform === 'win32';
 
-  // Check if gh CLI is installed
   try {
+    // Primary check: Try to locate executable
     const findCommand = isWindows ? 'where gh' : 'command -v gh';
-    const { stdout } = await execAsync(findCommand, { env: execEnv });
-    status.path = stdout.trim().split(/\r?\n/)[0];
-    status.installed = true;
-  } catch {
-    // gh not in PATH, try common locations from centralized system paths
-    const commonPaths = getGitHubCliPaths();
+    // Use shell: true to better support shims/aliases on Windows
+    const { stdout } = await execAsync(findCommand, { env: execEnv, shell: true });
+    const foundPath = stdout.trim().split(/\r?\n/)[0];
+    if (foundPath) {
+      status.path = foundPath;
+      status.installed = true;
+    }
+  } catch (e) {
+    // Locate failed, but command might still be runnable (e.g. shim)
+  }
 
-    for (const p of commonPaths) {
-      try {
-        if (await systemPathAccess(p)) {
-          status.path = p;
-          status.installed = true;
-          break;
-        }
-      } catch {
-        // Not found at this path
+  // Secondary check: If not found by 'where', try checking version directly
+  if (!status.installed) {
+    try {
+      const { stdout } = await execAsync('gh --version', { env: execEnv });
+      if (stdout.includes('gh version')) {
+        status.installed = true;
+        status.path = 'gh'; // Assume it's in PATH even if 'where' failed
+        status.version = stdout.match(/gh version ([\d.]+)/)?.[1] || null;
+      }
+    } catch {
+      // Only checking hardcoded paths if direct execution failed
+      const commonPaths = getGitHubCliPaths();
+      for (const p of commonPaths) {
+        try {
+          if (await systemPathAccess(p)) {
+            status.path = p;
+            status.installed = true;
+            break;
+          }
+        } catch {}
       }
     }
   }
