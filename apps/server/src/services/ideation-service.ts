@@ -203,7 +203,7 @@ export class IdeationService {
       );
 
       // Resolve model alias to canonical identifier (with prefix)
-      const modelId = resolveModelString(options?.model ?? 'sonnet');
+      const modelId = resolveModelString(options?.model ?? 'default');
 
       // Create SDK options
       const sdkOptions = createChatOptions({
@@ -654,7 +654,7 @@ export class IdeationService {
       );
 
       // Resolve model alias to canonical identifier (with prefix)
-      const modelId = resolveModelString('sonnet');
+      const modelId = resolveModelString('default');
 
       // Create SDK options
       const sdkOptions = createChatOptions({

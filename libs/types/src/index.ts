@@ -186,6 +186,7 @@ export {
   isClaudeModel,
   isCodexModel,
   isOpencodeModel,
+  isZaiModel,
   getModelProvider,
   stripProviderPrefix,
   addProviderPrefix,

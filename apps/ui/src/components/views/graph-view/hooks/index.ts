@@ -7,3 +7,8 @@ export {
 } from './use-graph-nodes';
 export { useGraphLayout } from './use-graph-layout';
 export { useGraphFilter, type GraphFilterState, type GraphFilterResult } from './use-graph-filter';
+export {
+  useGraphPerformance,
+  useBatchedNodeUpdates,
+  useFrameRateMonitor,
+} from './use-graph-performance';

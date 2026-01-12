@@ -31,7 +31,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { AnthropicIcon, CursorIcon, OpenAIIcon, OpenCodeIcon } from '@/components/ui/provider-icon';
+import {
+  AnthropicIcon,
+  CursorIcon,
+  OpenAIIcon,
+  OpenCodeIcon,
+  ZaiIcon,
+} from '@/components/ui/provider-icon';
 import { TerminalOutput } from '../components';
 import { useCliInstallation, useTokenSave } from '../hooks';
 
@@ -40,7 +46,7 @@ interface ProvidersSetupStepProps {
   onBack: () => void;
 }
 
-type ProviderTab = 'claude' | 'cursor' | 'codex' | 'opencode';
+type ProviderTab = 'claude' | 'cursor' | 'codex' | 'opencode' | 'zai';
 
 // ============================================================================
 // Claude Content
@@ -738,11 +744,11 @@ function CodexContent() {
     setIsSaving(true);
     try {
       const api = getElectronAPI();
-      if (!api.setup?.saveApiKey) {
-        toast.error('Save API not available');
+      if (!api.setup?.storeApiKey) {
+        toast.error('Store API not available');
         return;
       }
-      const result = await api.setup.saveApiKey('openai', apiKey);
+      const result = await api.setup.storeApiKey('openai', apiKey);
       if (result.success) {
         setApiKeys({ ...apiKeys, openai: apiKey });
         setCodexAuthStatus({ authenticated: true, method: 'api_key' });
@@ -1214,6 +1220,115 @@ function OpencodeContent() {
 }
 
 // ============================================================================
+// Z.AI Content
+// ============================================================================
+function ZaiContent() {
+  const { zaiAuthStatus, setZaiAuthStatus } = useSetupStore();
+  const { setApiKeys, apiKeys } = useAppStore();
+  const [apiKey, setApiKey] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Check if already configured
+  useEffect(() => {
+    if (apiKeys.zai || zaiAuthStatus?.authenticated) {
+      setZaiAuthStatus({
+        authenticated: true,
+        method: 'api_key',
+        hasApiKey: true,
+      });
+    }
+  }, [apiKeys.zai, setZaiAuthStatus, zaiAuthStatus?.authenticated]);
+
+  const handleSaveApiKey = async () => {
+    if (!apiKey.trim()) return;
+    setIsSaving(true);
+    try {
+      const api = getElectronAPI();
+      if (!api.setup?.storeApiKey) {
+        toast.error('Store API not available');
+        return;
+      }
+      const result = await api.setup.storeApiKey('zai', apiKey);
+      if (result.success) {
+        setApiKeys({ ...apiKeys, zai: apiKey });
+        setZaiAuthStatus({
+          authenticated: true,
+          method: 'api_key',
+          hasApiKey: true,
+        });
+        toast.success('API key saved successfully!');
+        setApiKey('');
+      } else {
+        toast.error(result.error || 'Failed to save API key');
+      }
+    } catch {
+      toast.error('Failed to save API key');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isReady = zaiAuthStatus?.authenticated;
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ZaiIcon className="w-5 h-5" />
+            Z.AI Configuration
+          </CardTitle>
+        </div>
+        <CardDescription>
+          {isReady
+            ? 'Z.AI is configured and ready to use.'
+            : 'Configure Z.AI to use their powerful models.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isReady && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+            <CheckCircle2 className="w-5 h-5 text-green-500" />
+            <p className="font-medium text-foreground">API Key Configured</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="zai-key" className="text-foreground">
+              Z.AI API Key
+            </Label>
+            <Input
+              id="zai-key"
+              type="password"
+              placeholder="sk-..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="bg-input border-border text-foreground"
+            />
+            <p className="text-xs text-muted-foreground">Enter your Z.AI API key.</p>
+          </div>
+          <Button
+            onClick={handleSaveApiKey}
+            disabled={isSaving || !apiKey.trim()}
+            className="w-full bg-brand-500 hover:bg-brand-600 text-white"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save API Key'
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) {
@@ -1234,6 +1349,8 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
     setCodexCliStatus,
     setCodexAuthStatus,
     setOpencodeCliStatus,
+    setZaiAuthStatus,
+    zaiAuthStatus,
   } = useSetupStore();
 
   // Check all providers on mount
@@ -1323,8 +1440,20 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
       }
     };
 
+    // Check Z.AI
+    const checkZai = async () => {
+      const apiKeys = useAppStore.getState().apiKeys;
+      if (apiKeys.zai) {
+        setZaiAuthStatus({
+          authenticated: true,
+          method: 'api_key',
+          hasApiKey: true,
+        });
+      }
+    };
+
     // Run all checks in parallel
-    await Promise.all([checkClaude(), checkCursor(), checkCodex(), checkOpencode()]);
+    await Promise.all([checkClaude(), checkCursor(), checkCodex(), checkOpencode(), checkZai()]);
     setIsInitialChecking(false);
   }, [
     setClaudeCliStatus,
@@ -1358,11 +1487,14 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
   const isOpencodeInstalled = opencodeCliStatus?.installed === true;
   const isOpencodeAuthenticated = opencodeCliStatus?.auth?.authenticated === true;
 
+  const isZaiAuthenticated = zaiAuthStatus?.authenticated === true;
+
   const hasAtLeastOneProvider =
     isClaudeAuthenticated ||
     isCursorAuthenticated ||
     isCodexAuthenticated ||
-    isOpencodeAuthenticated;
+    isOpencodeAuthenticated ||
+    isZaiAuthenticated;
 
   type ProviderStatus = 'not_installed' | 'installed_not_auth' | 'authenticated' | 'verifying';
 
@@ -1406,6 +1538,13 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
       status: getProviderStatus(isOpencodeInstalled, isOpencodeAuthenticated),
       color: 'text-green-500',
     },
+    {
+      id: 'zai' as const,
+      label: 'Z.AI',
+      icon: ZaiIcon,
+      status: getProviderStatus(true, isZaiAuthenticated), // Always "installed"
+      color: 'text-purple-500',
+    },
   ];
 
   const renderStatusIcon = (status: ProviderStatus) => {
@@ -1442,7 +1581,7 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
       )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ProviderTab)}>
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-1">
           {providers.map((provider) => {
             const Icon = provider.icon;
             return (
@@ -1487,6 +1626,9 @@ export function ProvidersSetupStep({ onNext, onBack }: ProvidersSetupStepProps) 
           </TabsContent>
           <TabsContent value="opencode" className="mt-0">
             <OpencodeContent />
+          </TabsContent>
+          <TabsContent value="zai" className="mt-0">
+            <ZaiContent />
           </TabsContent>
         </div>
       </Tabs>

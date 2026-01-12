@@ -91,9 +91,9 @@ async function main() {
   // Show mode selection menu
   printModeMenu({ isDev: true });
 
-  // Setup cleanup handlers
-  const cleanup = createCleanupHandler(processes);
-  setupSignalHandlers(cleanup);
+  // Setup cleanup handlers with port info for Windows exit fallback
+  const cleanup = createCleanupHandler(processes, { webPort, serverPort });
+  setupSignalHandlers(cleanup, { webPort, serverPort });
 
   // Prompt for choice
   while (true) {

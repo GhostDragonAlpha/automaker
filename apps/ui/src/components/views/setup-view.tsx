@@ -9,6 +9,7 @@ import {
   GitHubSetupStep,
 } from './setup-view/steps';
 import { useNavigate } from '@tanstack/react-router';
+import { forceSyncSettingsToServer } from '@/hooks/use-settings-sync';
 
 const logger = createLogger('SetupView');
 
@@ -83,9 +84,14 @@ export function SetupView() {
     setCurrentStep('complete');
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     logger.debug('[Setup Flow] handleFinish called - completing setup');
     completeSetup();
+
+    // Force immediate sync to server to ensure persistence before navigation
+    logger.debug('[Setup Flow] Forcing settings sync to server...');
+    await forceSyncSettingsToServer();
+
     logger.debug('[Setup Flow] Setup completed, redirecting to welcome view');
     navigate({ to: '/' });
   };

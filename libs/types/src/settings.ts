@@ -272,6 +272,10 @@ export interface AIProfile {
   // OpenCode-specific settings
   /** Which OpenCode model to use - only for OpenCode provider */
   opencodeModel?: OpencodeModelId;
+
+  // Z.AI-specific settings
+  /** Which Z.AI model to use - only for Z.AI provider */
+  zaiModel?: string;
 }
 
 /**
@@ -300,6 +304,11 @@ export function profileHasThinking(profile: AIProfile): boolean {
     return false;
   }
 
+  if (profile.provider === 'zai') {
+    // All Z.AI models in this integration support reasoning/thinking
+    return true;
+  }
+
   return false;
 }
 
@@ -317,6 +326,10 @@ export function getProfileModelString(profile: AIProfile): string {
 
   if (profile.provider === 'opencode') {
     return `opencode:${profile.opencodeModel || DEFAULT_OPENCODE_MODEL}`;
+  }
+
+  if (profile.provider === 'zai') {
+    return profile.zaiModel || 'glm-4.5';
   }
 
   // Claude
@@ -502,6 +515,12 @@ export interface GlobalSettings {
   enabledOpencodeModels?: OpencodeModelId[];
   /** Default OpenCode model selection when switching to OpenCode CLI */
   opencodeDefaultModel?: OpencodeModelId;
+
+  // Z.AI Settings (global)
+  /** Which Z.AI models are available in feature modal (empty = all) */
+  enabledZaiModels?: string[];
+  /** Default Z.AI model selection when switching to Z.AI */
+  zaiDefaultModel?: string;
 
   // Input Configuration
   /** User's keyboard shortcut bindings */
@@ -722,22 +741,22 @@ export interface ProjectSettings {
 /** Default phase model configuration - sensible defaults for each task type */
 export const DEFAULT_PHASE_MODELS: PhaseModelConfig = {
   // Quick tasks - use fast models for speed and cost
-  enhancementModel: { model: 'sonnet' },
-  fileDescriptionModel: { model: 'haiku' },
-  imageDescriptionModel: { model: 'haiku' },
+  enhancementModel: { model: 'default' },
+  fileDescriptionModel: { model: 'default' },
+  imageDescriptionModel: { model: 'default' },
 
   // Validation - use smart models for accuracy
-  validationModel: { model: 'sonnet' },
+  validationModel: { model: 'default' },
 
   // Generation - use powerful models for quality
-  specGenerationModel: { model: 'opus' },
-  featureGenerationModel: { model: 'sonnet' },
-  backlogPlanningModel: { model: 'sonnet' },
-  projectAnalysisModel: { model: 'sonnet' },
-  suggestionsModel: { model: 'sonnet' },
+  specGenerationModel: { model: 'default' },
+  featureGenerationModel: { model: 'default' },
+  backlogPlanningModel: { model: 'default' },
+  projectAnalysisModel: { model: 'default' },
+  suggestionsModel: { model: 'default' },
 
   // Memory - use fast model for learning extraction (cost-effective)
-  memoryExtractionModel: { model: 'haiku' },
+  memoryExtractionModel: { model: 'default' },
 };
 
 /** Current version of the global settings schema */
@@ -792,12 +811,14 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   defaultAIProfileId: null,
   muteDoneSound: false,
   phaseModels: DEFAULT_PHASE_MODELS,
-  enhancementModel: 'sonnet',
-  validationModel: 'opus',
+  enhancementModel: 'GLM-4.7',
+  validationModel: 'GLM-4.7',
   enabledCursorModels: getAllCursorModelIds(),
   cursorDefaultModel: 'auto',
   enabledOpencodeModels: getAllOpencodeModelIds(),
   opencodeDefaultModel: DEFAULT_OPENCODE_MODEL,
+  enabledZaiModels: [], // Empty means all
+  zaiDefaultModel: 'GLM-4.7',
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS,
   aiProfiles: [],
   projects: [],

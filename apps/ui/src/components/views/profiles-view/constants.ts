@@ -1,6 +1,6 @@
 import { Brain, Zap, Scale, Cpu, Rocket, Sparkles } from 'lucide-react';
 import type { ModelAlias, ThinkingLevel } from '@/store/app-store';
-import { AnthropicIcon, CursorIcon, OpenAIIcon } from '@/components/ui/provider-icon';
+import { AnthropicIcon, CursorIcon, OpenAIIcon, ZaiIcon } from '@/components/ui/provider-icon';
 
 // Icon mapping for profiles
 export const PROFILE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -13,6 +13,7 @@ export const PROFILE_ICONS: Record<string, React.ComponentType<{ className?: str
   Anthropic: AnthropicIcon,
   Cursor: CursorIcon,
   Codex: OpenAIIcon,
+  Zai: ZaiIcon,
 };
 
 // Available icons for selection
@@ -26,6 +27,7 @@ export const ICON_OPTIONS = [
   { name: 'Anthropic', icon: AnthropicIcon },
   { name: 'Cursor', icon: CursorIcon },
   { name: 'Codex', icon: OpenAIIcon },
+  { name: 'Zai', icon: ZaiIcon },
 ];
 
 // Model options for the form

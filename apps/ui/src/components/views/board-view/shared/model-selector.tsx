@@ -9,11 +9,13 @@ import { useAppStore } from '@/store/app-store';
 import { useSetupStore } from '@/store/setup-store';
 import { getModelProvider, PROVIDER_PREFIXES, stripProviderPrefix } from '@automaker/types';
 import type { ModelProvider } from '@automaker/types';
-<<<<<<< HEAD
-import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS, ModelOption } from './model-constants';
-=======
-import { CLAUDE_MODELS, CURSOR_MODELS, ZAI_MODELS, ModelOption } from './model-constants';
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
+import {
+  CLAUDE_MODELS,
+  CURSOR_MODELS,
+  CODEX_MODELS,
+  ZAI_MODELS,
+  ModelOption,
+} from './model-constants';
 
 interface ModelSelectorProps {
   selectedModel: string; // Can be ModelAlias or "cursor-{id}"
@@ -99,7 +101,6 @@ export function ModelSelector({
           </button>
           <button
             type="button"
-<<<<<<< HEAD
             onClick={() => handleProviderChange('codex')}
             className={cn(
               'flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2',
@@ -111,7 +112,9 @@ export function ModelSelector({
           >
             <OpenAIIcon className="w-4 h-4" />
             Codex CLI
-=======
+          </button>
+          <button
+            type="button"
             onClick={() => handleProviderChange('zai')}
             className={cn(
               'flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2',
@@ -123,7 +126,6 @@ export function ModelSelector({
           >
             <Brain className="w-4 h-4" />
             Z.AI
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
           </button>
         </div>
       </div>

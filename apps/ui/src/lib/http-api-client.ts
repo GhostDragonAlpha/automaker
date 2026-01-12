@@ -1533,6 +1533,8 @@ export class HttpApiClient implements ElectronAPI {
         editedPlan,
         feedback,
       }),
+    rejectPlan: (projectPath: string, featureId: string, feedback: string) =>
+      this.post('/api/auto-mode/reject-plan', { projectPath, featureId, feedback }),
     onEvent: (callback: (event: AutoModeEvent) => void) => {
       return this.subscribeToEvent('auto-mode:event', callback as EventCallback);
     },
@@ -1910,6 +1912,7 @@ export class HttpApiClient implements ElectronAPI {
         anthropic: { configured: boolean; masked: string };
         google: { configured: boolean; masked: string };
         openai: { configured: boolean; masked: string };
+        zai: { configured: boolean; masked: string };
       };
       error?: string;
     }> => this.get('/api/settings/credentials'),

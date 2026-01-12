@@ -7,7 +7,13 @@
 
 import { BaseProvider } from './base-provider.js';
 import type { InstallationStatus, ModelDefinition } from './types.js';
-import { isCursorModel, isCodexModel, isOpencodeModel, type ModelProvider } from '@automaker/types';
+import {
+  isCursorModel,
+  isCodexModel,
+  isOpencodeModel,
+  isZaiModel,
+  type ModelProvider,
+} from '@automaker/types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -300,4 +306,13 @@ registerProvider('opencode', {
   factory: () => new OpencodeProvider(),
   canHandleModel: (model: string) => isOpencodeModel(model),
   priority: 3, // Between codex (5) and claude (0)
+});
+
+// Register Z.AI provider
+import { ZaiProvider } from './zai-provider.js';
+registerProvider('zai', {
+  factory: () => new ZaiProvider(),
+  aliases: ['glm', 'zhipu'],
+  canHandleModel: (model: string) => isZaiModel(model),
+  priority: 5, // Priority level
 });

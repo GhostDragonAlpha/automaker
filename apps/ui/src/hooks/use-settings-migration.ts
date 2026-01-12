@@ -403,8 +403,12 @@ export function useSettingsMigration(): MigrationState {
           `localStorage has ${localSettings?.projects?.length ?? 0} projects, ${localSettings?.aiProfiles?.length ?? 0} profiles`
         );
 
-        // Check if server has settings files
-        const status = await api.settings.getStatus();
+        // Fetch settings and credentials in parallel
+        const [status, globalResult, credentialsResult] = await Promise.all([
+          api.settings.getStatus(),
+          api.settings.getGlobal(),
+          api.settings.getCredentials(),
+        ]);
 
         if (!status.success) {
           logger.error('Failed to get settings status:', status);
@@ -425,18 +429,19 @@ export function useSettingsMigration(): MigrationState {
           return;
         }
 
-        // Try to get global settings from server
+        // Process global settings
         let serverSettings: GlobalSettings | null = null;
-        try {
-          const global = await api.settings.getGlobal();
-          if (global.success && global.settings) {
-            serverSettings = global.settings as unknown as GlobalSettings;
-            logger.info(
-              `Server has ${serverSettings.projects?.length ?? 0} projects, ${serverSettings.aiProfiles?.length ?? 0} profiles`
-            );
-          }
-        } catch (error) {
-          logger.error('Failed to fetch server settings:', error);
+        if (globalResult.success && globalResult.settings) {
+          serverSettings = globalResult.settings as unknown as GlobalSettings;
+          logger.info(
+            `Server has ${serverSettings.projects?.length ?? 0} projects, ${serverSettings.aiProfiles?.length ?? 0} profiles`
+          );
+        }
+
+        // Process credentials
+        let serverCredentials = null;
+        if (credentialsResult.success && credentialsResult.credentials) {
+          serverCredentials = credentialsResult.credentials;
         }
 
         // Determine what settings to use
@@ -473,8 +478,8 @@ export function useSettingsMigration(): MigrationState {
         }
 
         // Hydrate the store
-        hydrateStoreFromSettings(finalSettings);
-        logger.info('Store hydrated with settings');
+        hydrateStoreFromSettings(finalSettings, serverCredentials);
+        logger.info('Store hydrated with settings and credentials');
 
         // If we merged data or used localStorage, sync to server with migration marker
         if (needsSync) {
@@ -524,7 +529,18 @@ export function useSettingsMigration(): MigrationState {
 /**
  * Hydrate the Zustand store from settings object
  */
-export function hydrateStoreFromSettings(settings: GlobalSettings): void {
+/**
+ * Hydrate the Zustand store from settings object
+ */
+export function hydrateStoreFromSettings(
+  settings: GlobalSettings,
+  credentials?: {
+    anthropic: { configured: boolean; masked: string };
+    google: { configured: boolean; masked: string };
+    openai: { configured: boolean; masked: string };
+    zai?: { configured: boolean; masked: string };
+  } | null
+): void {
   const current = useAppStore.getState();
 
   // Convert ProjectRef[] to Project[] (minimal data, features will be loaded separately)
@@ -549,6 +565,15 @@ export function hydrateStoreFromSettings(settings: GlobalSettings): void {
   // Save theme to localStorage for fallback when server settings aren't available
   if (settings.theme) {
     setItem(THEME_STORAGE_KEY, settings.theme);
+  }
+
+  // Apply credentials if provided
+  const apiKeys = { ...current.apiKeys };
+  if (credentials) {
+    if (credentials.anthropic?.configured) apiKeys.anthropic = credentials.anthropic.masked;
+    if (credentials.google?.configured) apiKeys.google = credentials.google.masked;
+    if (credentials.openai?.configured) apiKeys.openai = credentials.openai.masked;
+    if (credentials.zai?.configured) apiKeys.zai = credentials.zai.masked;
   }
 
   useAppStore.setState({
@@ -590,6 +615,8 @@ export function hydrateStoreFromSettings(settings: GlobalSettings): void {
     worktreePanelCollapsed: settings.worktreePanelCollapsed ?? false,
     lastProjectDir: settings.lastProjectDir ?? '',
     recentFolders: settings.recentFolders ?? [],
+    // Apply credential updates
+    apiKeys,
   });
 
   // Hydrate setup wizard state from global settings (API-backed)

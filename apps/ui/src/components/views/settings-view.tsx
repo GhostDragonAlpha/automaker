@@ -23,6 +23,7 @@ import {
   CursorSettingsTab,
   CodexSettingsTab,
   OpencodeSettingsTab,
+  ZaiSettingsTab,
 } from './settings-view/providers';
 import { MCPServersSection } from './settings-view/mcp-servers';
 import { PromptCustomizationSection } from './settings-view/prompts';
@@ -116,6 +117,8 @@ export function SettingsView() {
         return <CodexSettingsTab />;
       case 'opencode-provider':
         return <OpencodeSettingsTab />;
+      case 'zai-provider':
+        return <ZaiSettingsTab />;
       case 'providers':
       case 'claude': // Backwards compatibility - redirect to claude-provider
         return <ClaudeSettingsTab />;

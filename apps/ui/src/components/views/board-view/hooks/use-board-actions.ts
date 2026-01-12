@@ -235,19 +235,7 @@ export function useBoardActions({
   const handleUpdateFeature = useCallback(
     async (
       featureId: string,
-      updates: {
-        title: string;
-        category: string;
-        description: string;
-        skipTests: boolean;
-        model: ModelAlias;
-        thinkingLevel: ThinkingLevel;
-        reasoningEffort: ReasoningEffort;
-        imagePaths: DescriptionImagePath[];
-        branchName: string;
-        priority: number;
-        planningMode?: PlanningMode;
-        requirePlanApproval?: boolean;
+      updates: Partial<Feature> & {
         workMode?: 'current' | 'auto' | 'custom';
       },
       descriptionHistorySource?: 'enhance' | 'edit',

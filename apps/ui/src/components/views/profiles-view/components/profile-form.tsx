@@ -8,7 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { cn, modelSupportsThinking } from '@/lib/utils';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Brain } from 'lucide-react';
-import { AnthropicIcon, CursorIcon, OpenAIIcon, OpenCodeIcon } from '@/components/ui/provider-icon';
+import {
+  AnthropicIcon,
+  CursorIcon,
+  OpenAIIcon,
+  OpenCodeIcon,
+  ZaiIcon,
+} from '@/components/ui/provider-icon';
 import { toast } from 'sonner';
 import type {
   AIProfile,
@@ -27,6 +33,7 @@ import {
   DEFAULT_OPENCODE_MODEL,
 } from '@automaker/types';
 import { useAppStore } from '@/store/app-store';
+import { ZAI_MODELS } from '@/components/views/board-view/shared/model-constants';
 import { CLAUDE_MODELS, THINKING_LEVELS, ICON_OPTIONS } from '../constants';
 
 interface ProfileFormProps {
@@ -59,6 +66,8 @@ export function ProfileForm({
     codexModel: profile.codexModel || (CODEX_MODEL_MAP.gpt52Codex as CodexModelId),
     // OpenCode-specific
     opencodeModel: profile.opencodeModel || (DEFAULT_OPENCODE_MODEL as OpencodeModelId),
+    // Z.AI-specific
+    zaiModel: profile.zaiModel || 'glm-4.5',
     icon: profile.icon || 'Brain',
   });
 
@@ -77,6 +86,8 @@ export function ProfileForm({
       codexModel: profile.codexModel || (CODEX_MODEL_MAP.gpt52Codex as CodexModelId),
       // OpenCode-specific
       opencodeModel: profile.opencodeModel || (DEFAULT_OPENCODE_MODEL as OpencodeModelId),
+      // Z.AI-specific
+      zaiModel: profile.zaiModel || 'glm-4.5',
       icon: profile.icon || 'Brain',
     });
   }, [profile]);
@@ -98,6 +109,7 @@ export function ProfileForm({
         provider === 'opencode'
           ? (DEFAULT_OPENCODE_MODEL as OpencodeModelId)
           : formData.opencodeModel,
+      zaiModel: provider === 'zai' ? 'glm-4.5' : formData.zaiModel,
     });
   };
 
@@ -126,6 +138,13 @@ export function ProfileForm({
     setFormData({
       ...formData,
       opencodeModel,
+    });
+  };
+
+  const handleZaiModelChange = (zaiModel: string) => {
+    setFormData({
+      ...formData,
+      zaiModel,
     });
   };
 
@@ -162,10 +181,14 @@ export function ProfileForm({
         ...baseProfile,
         codexModel: formData.codexModel,
       });
-    } else if (formData.provider === 'opencode') {
       onSave({
         ...baseProfile,
         opencodeModel: formData.opencodeModel,
+      });
+    } else if (formData.provider === 'zai') {
+      onSave({
+        ...baseProfile,
+        model: formData.zaiModel as ModelAlias, // Z.AI uses generic model field for now or dedicated field if updated
       });
     } else {
       onSave({
@@ -286,6 +309,20 @@ export function ProfileForm({
             >
               <OpenCodeIcon className="w-4 h-4" />
               OpenCode
+            </button>
+            <button
+              type="button"
+              onClick={() => handleProviderChange('zai')}
+              className={cn(
+                'px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-center gap-2',
+                formData.provider === 'zai'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background hover:bg-accent border-border'
+              )}
+              data-testid="provider-select-zai"
+            >
+              <ZaiIcon className="w-4 h-4" />
+              Z.AI
             </button>
           </div>
         </div>
@@ -494,6 +531,46 @@ export function ProfileForm({
                   >
                     {model.tier}
                   </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Z.AI Model Selection */}
+        {formData.provider === 'zai' && (
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <ZaiIcon className="w-4 h-4 text-primary" />
+              Z.AI Model
+            </Label>
+            <div className="flex flex-col gap-2">
+              {ZAI_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  onClick={() => handleZaiModelChange(model.id)}
+                  className={cn(
+                    'w-full px-3 py-2 rounded-md border text-sm font-medium transition-colors flex items-center justify-between',
+                    formData.zaiModel === model.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-accent border-border'
+                  )}
+                  data-testid={`zai-model-select-${model.id}`}
+                >
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span>{model.label}</span>
+                    <span
+                      className={cn(
+                        'text-xs',
+                        formData.zaiModel === model.id
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {model.description}
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>

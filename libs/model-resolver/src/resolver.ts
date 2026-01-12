@@ -47,6 +47,12 @@ export function resolveModelString(
     return defaultModel;
   }
 
+  // Explicitly handle "default" string - use the defaultModel parameter
+  if (modelKey === 'default') {
+    console.log(`[ModelResolver] Model is 'default', using defaultModel: ${defaultModel}`);
+    return defaultModel;
+  }
+
   // Cursor model with explicit prefix (e.g., "cursor-composer-1") - pass through unchanged
   // CursorProvider will strip the prefix when calling the CLI
   if (modelKey.startsWith(PROVIDER_PREFIXES.cursor)) {

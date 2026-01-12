@@ -532,6 +532,11 @@ export interface AutoModeAPI {
     editedPlan?: string,
     feedback?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  rejectPlan: (
+    projectPath: string,
+    featureId: string,
+    feedback: string
+  ) => Promise<{ success: boolean; error?: string }>;
   onEvent: (callback: (event: AutoModeEvent) => void) => () => void;
 }
 
@@ -1790,6 +1795,11 @@ function createMockAutoModeAPI(): AutoModeAPI {
         message: 'Feature stopped by user',
       });
 
+      return { success: true };
+    },
+
+    rejectPlan: async (projectPath: string, featureId: string, feedback: string) => {
+      console.log(`[Mock] Plan rejected for feature ${featureId} with feedback: ${feedback}`);
       return { success: true };
     },
 

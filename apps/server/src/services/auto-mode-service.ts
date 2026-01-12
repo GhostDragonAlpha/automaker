@@ -558,7 +558,44 @@ export class AutoModeService {
       );
 
       // Get model from feature and determine provider
-      const model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+      let model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+
+      // Handle "default" model selection by looking up settings
+      if (model === 'default') {
+        try {
+          // Fetch global settings
+          const settings = await this.settingsService.getGlobalSettings();
+          if (!settings) {
+            throw new Error('No global settings available. Please configure your preferences.');
+          }
+          const defaultProfileId = settings.defaultAIProfileId;
+          const defaultProfile = settings.aiProfiles.find((p) => p.id === defaultProfileId);
+
+          if (defaultProfile) {
+            // Resolve model from the default profile
+            const { getProfileModelString } = await import('@automaker/types');
+            model = getProfileModelString(defaultProfile);
+            logger.info(`Resolved "default" model to profile "${defaultProfile.name}": ${model}`);
+          } else {
+            // Fallback if no profile: check individual provider defaults
+            // Priority: Z.AI > Claude > Cursor > Codex
+            if (settings.zaiDefaultModel) {
+              model = settings.zaiDefaultModel;
+              logger.info(`Resolved "default" model to Z.AI default: ${model}`);
+            } else {
+              // Ultimate fallback: Throw error if no settings at all
+              // This enforces the "no hardcoded values" rule
+              const errorMsg =
+                'No default model configured in settings. Please configure a Global Default Profile or Provider Default.';
+              logger.error(errorMsg);
+              throw new Error(errorMsg);
+            }
+          }
+        } catch (error) {
+          logger.error('Failed to resolve "default" model from settings:', error);
+          throw new Error('Failed to resolve "default" model. Please check your Global Settings.');
+        }
+      }
       const provider = ProviderFactory.getProviderNameForModel(model);
       logger.info(
         `Executing feature ${featureId} with model: ${model}, provider: ${provider} in ${workDir}`
@@ -1327,8 +1364,33 @@ Format your response as a structured markdown document.`;
       const settings = await this.settingsService?.getGlobalSettings();
       const phaseModelEntry =
         settings?.phaseModels?.projectAnalysisModel || DEFAULT_PHASE_MODELS.projectAnalysisModel;
-      const { model: analysisModel, thinkingLevel: analysisThinkingLevel } =
+      const { model: resolvedModel, thinkingLevel: analysisThinkingLevel } =
         resolvePhaseModel(phaseModelEntry);
+
+      let analysisModel = resolvedModel;
+      if (analysisModel === 'default') {
+        // If phase model is default, use the project analysis specific default or global default
+        // For now, reuse the same resolution logic or just pick a smart model
+        // Ideally, we check settings.defaultAIProfileId again
+        if (settings?.defaultAIProfileId) {
+          const defaultProfile = settings.aiProfiles.find(
+            (p) => p.id === settings.defaultAIProfileId
+          );
+          if (defaultProfile) {
+            const { getProfileModelString } = await import('@automaker/types');
+            analysisModel = getProfileModelString(defaultProfile);
+          }
+        }
+        // If still default (no profile found), fallback to Z.AI or error
+        if (analysisModel === 'default') {
+          analysisModel = settings?.zaiDefaultModel ?? '';
+          if (!analysisModel) {
+            throw new Error(
+              'Could not resolve project analysis model. Please configure a default profile or Z.AI default model.'
+            );
+          }
+        }
+      }
       logger.info('Using model for project analysis:', analysisModel);
 
       const provider = ProviderFactory.getProviderForModel(analysisModel);
@@ -2038,7 +2100,7 @@ This helps parse your summary correctly in the output logs.`;
     const previousContent = options?.previousContent;
 
     // Validate vision support before processing images
-    const effectiveModel = model || 'claude-sonnet-4-20250514';
+    const effectiveModel = model || 'default';
     if (imagePaths && imagePaths.length > 0) {
       const supportsVision = ProviderFactory.modelSupportsVision(effectiveModel);
       if (!supportsVision) {
@@ -3232,7 +3294,7 @@ If nothing notable: {"learnings": []}`;
     // Resolve model from settings
     const { resolvePhaseModel } = await import('@automaker/model-resolver');
     const phaseModelEntry = settings?.phaseModels?.suggestionsModel || {
-      model: 'claude-sonnet-4-20250514',
+      model: 'default',
     };
     const modelConfig = resolvePhaseModel(phaseModelEntry);
 

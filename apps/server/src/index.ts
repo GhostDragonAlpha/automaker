@@ -165,7 +165,7 @@ const events: EventEmitter = createEventEmitter();
 
 // Create services
 // Note: settingsService is created first so it can be injected into other services
-const settingsService = new SettingsService(DATA_DIR);
+const settingsService = new SettingsService(DATA_DIR, process.env.SETTINGS_FILE || 'settings.json');
 const agentService = new AgentService(DATA_DIR, events, settingsService);
 const featureLoader = new FeatureLoader();
 const autoModeService = new AutoModeService(events, settingsService);
@@ -210,7 +210,7 @@ app.use('/api', requireJsonContentType);
 // Mount API routes - health, auth, and setup are unauthenticated
 app.use('/api/health', createHealthRoutes());
 app.use('/api/auth', createAuthRoutes());
-app.use('/api/setup', createSetupRoutes());
+app.use('/api/setup', createSetupRoutes(settingsService));
 
 // Apply authentication to all other routes
 app.use('/api', authMiddleware);
@@ -576,21 +576,57 @@ const startServer = (port: number) => {
 
 startServer(PORT);
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down...');
-  terminalService.cleanup();
+// Graceful shutdown with timeout to prevent zombie processes
+const SHUTDOWN_TIMEOUT_MS = 3000; // 3 seconds before forced exit
+
+function gracefulShutdown(signal: string) {
+  logger.info(`${signal} received, shutting down...`);
+
+  // Set a hard timeout - if graceful shutdown fails, force exit
+  const forceExitTimeout = setTimeout(() => {
+    logger.warn('Graceful shutdown timed out, forcing exit...');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
+  // Unref the timeout so it doesn't keep the process alive
+  forceExitTimeout.unref();
+
+  // Cleanup terminal service
+  try {
+    terminalService.cleanup();
+  } catch (e) {
+    logger.warn('Error during terminal cleanup:', e);
+  }
+
+  // Close WebSocket servers first
+  try {
+    wss.close();
+    terminalWss.close();
+  } catch (e) {
+    logger.warn('Error closing WebSocket servers:', e);
+  }
+
+  // Close HTTP server
   server.close(() => {
     logger.info('Server closed');
+    clearTimeout(forceExitTimeout);
     process.exit(0);
   });
+
+  // Also close all existing connections to speed up shutdown
+  server.closeAllConnections?.();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+
+// Handle uncaught exceptions to prevent zombie processes
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception:', error);
+  gracefulShutdown('uncaughtException');
 });
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down...');
-  terminalService.cleanup();
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled rejection at:', promise, 'reason:', reason);
 });

@@ -59,7 +59,6 @@ export const CURSOR_MODELS: ModelOption[] = Object.entries(CURSOR_MODEL_MAP).map
  * Codex/OpenAI models
  * Official models from https://developers.openai.com/codex/models/
  */
-<<<<<<< HEAD
 export const CODEX_MODELS: ModelOption[] = [
   {
     id: CODEX_MODEL_MAP.gpt52Codex,
@@ -100,66 +99,62 @@ export const CODEX_MODELS: ModelOption[] = [
     badge: 'Balanced',
     provider: 'codex',
     hasThinking: true,
-=======
+  },
+];
 
-/**
- * Z.AI models
- */
 export const ZAI_MODELS: ModelOption[] = [
   {
-    id: 'glm-4-plus',
+    id: 'GLM-4-Plus',
     label: 'Z.AI GLM-4 Plus',
     description: 'Flagship reasoning model (Best for complex coding)',
     badge: 'Flagship',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.7',
+    id: 'GLM-4.7',
     label: 'Z.AI GLM-4.7',
     description: 'High-performance reasoning model.',
     badge: 'Strong',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.5',
+    id: 'GLM-4.5',
     label: 'Z.AI GLM-4.5',
     description: 'Stable balanced model.',
     badge: 'Balanced',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.5-flash',
+    id: 'GLM-4.5-Flash',
     label: 'Z.AI GLM-4.5 Flash',
     description: 'Fast and cost-effective.',
     badge: 'Speed',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.6',
+    id: 'GLM-4.6',
     label: 'Z.AI GLM-4.6',
     description: 'Advanced reasoning capabilities.',
     badge: 'Advanced',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.6v',
+    id: 'GLM-4.6V',
     label: 'Z.AI GLM-4.6V',
     description: 'Multimodal model with vision.',
     badge: 'Vision',
     provider: 'zai' as ModelProvider,
   },
   {
-    id: 'glm-4.5-air',
+    id: 'GLM-4.5-Air',
     label: 'Z.AI GLM-4.5 Air',
     description: 'Lightweight flagship model.',
     badge: 'Efficiency',
     provider: 'zai' as ModelProvider,
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   },
 ];
 
 /**
-<<<<<<< HEAD
  * OpenCode models derived from OPENCODE_MODEL_CONFIGS
  */
 export const OPENCODE_MODELS: ModelOption[] = OPENCODE_MODEL_CONFIGS.map((config) => ({
@@ -173,17 +168,14 @@ export const OPENCODE_MODELS: ModelOption[] = OPENCODE_MODEL_CONFIGS.map((config
 /**
  * All available models (Claude + Cursor + Codex + OpenCode)
  */
+
 export const ALL_MODELS: ModelOption[] = [
   ...CLAUDE_MODELS,
   ...CURSOR_MODELS,
   ...CODEX_MODELS,
   ...OPENCODE_MODELS,
+  ...ZAI_MODELS,
 ];
-=======
- * All available models (Claude + Cursor + Z.AI)
- */
-export const ALL_MODELS: ModelOption[] = [...CLAUDE_MODELS, ...ZAI_MODELS, ...CURSOR_MODELS];
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
 export const THINKING_LEVELS: ThinkingLevel[] = ['none', 'low', 'medium', 'high', 'ultrathink'];
 

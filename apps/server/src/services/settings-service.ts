@@ -7,11 +7,11 @@
  * - Per-project settings ({projectPath}/.automaker/settings.json)
  */
 
+import path from 'path';
 import { createLogger } from '@automaker/utils';
 import * as secureFs from '../lib/secure-fs.js';
 
 import {
-  getGlobalSettingsPath,
   getCredentialsPath,
   getProjectSettingsPath,
   ensureDataDir,
@@ -106,14 +106,17 @@ async function fileExists(filePath: string): Promise<boolean> {
  */
 export class SettingsService {
   private dataDir: string;
+  private settingsFileName: string;
 
   /**
    * Create a new SettingsService instance
    *
    * @param dataDir - Absolute path to global data directory (e.g., ~/.automaker)
+   * @param settingsFileName - Name of the settings file (default: settings.json)
    */
-  constructor(dataDir: string) {
+  constructor(dataDir: string, settingsFileName: string = 'settings.json') {
     this.dataDir = dataDir;
+    this.settingsFileName = settingsFileName;
   }
 
   // ============================================================================
@@ -123,7 +126,7 @@ export class SettingsService {
   /**
    * Get global settings with defaults applied for any missing fields
    *
-   * Reads from {dataDir}/settings.json. If file doesn't exist, returns defaults.
+   * Reads from {dataDir}/{settingsFileName}. If file doesn't exist, returns defaults.
    * Missing fields are filled in from DEFAULT_GLOBAL_SETTINGS for forward/backward
    * compatibility during schema migrations.
    *
@@ -132,7 +135,7 @@ export class SettingsService {
    * @returns Promise resolving to complete GlobalSettings object
    */
   async getGlobalSettings(): Promise<GlobalSettings> {
-    const settingsPath = getGlobalSettingsPath(this.dataDir);
+    const settingsPath = path.join(this.dataDir, this.settingsFileName);
     const settings = await readJsonFile<GlobalSettings>(settingsPath, DEFAULT_GLOBAL_SETTINGS);
 
     // Migrate legacy enhancementModel/validationModel to phaseModels
@@ -263,7 +266,7 @@ export class SettingsService {
    */
   async updateGlobalSettings(updates: Partial<GlobalSettings>): Promise<GlobalSettings> {
     await ensureDataDir(this.dataDir);
-    const settingsPath = getGlobalSettingsPath(this.dataDir);
+    const settingsPath = path.join(this.dataDir, this.settingsFileName);
 
     const current = await this.getGlobalSettings();
 
@@ -356,7 +359,7 @@ export class SettingsService {
    * @returns Promise resolving to true if {dataDir}/settings.json exists
    */
   async hasGlobalSettings(): Promise<boolean> {
-    const settingsPath = getGlobalSettingsPath(this.dataDir);
+    const settingsPath = path.join(this.dataDir, this.settingsFileName);
     return fileExists(settingsPath);
   }
 
@@ -433,10 +436,13 @@ export class SettingsService {
    */
   async getMaskedCredentials(): Promise<{
     anthropic: { configured: boolean; masked: string };
+    google: { configured: boolean; masked: string };
+    openai: { configured: boolean; masked: string };
+    zai: { configured: boolean; masked: string };
   }> {
     const credentials = await this.getCredentials();
 
-    const maskKey = (key: string): string => {
+    const maskKey = (key?: string): string => {
       if (!key || key.length < 8) return '';
       return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
     };
@@ -445,6 +451,18 @@ export class SettingsService {
       anthropic: {
         configured: !!credentials.apiKeys.anthropic,
         masked: maskKey(credentials.apiKeys.anthropic),
+      },
+      google: {
+        configured: !!credentials.apiKeys.google,
+        masked: maskKey(credentials.apiKeys.google),
+      },
+      openai: {
+        configured: !!credentials.apiKeys.openai,
+        masked: maskKey(credentials.apiKeys.openai),
+      },
+      zai: {
+        configured: !!credentials.apiKeys.zai,
+        masked: maskKey(credentials.apiKeys.zai),
       },
     };
   }
@@ -624,7 +642,7 @@ export class SettingsService {
         defaultAIProfileId: (appState.defaultAIProfileId as string | null) || null,
         muteDoneSound: (appState.muteDoneSound as boolean) || false,
         enhancementModel:
-          (appState.enhancementModel as GlobalSettings['enhancementModel']) || 'sonnet',
+          (appState.enhancementModel as GlobalSettings['enhancementModel']) || 'default',
         keyboardShortcuts:
           (appState.keyboardShortcuts as KeyboardShortcuts) ||
           DEFAULT_GLOBAL_SETTINGS.keyboardShortcuts,

@@ -23,18 +23,17 @@ import {
 import {
   CLAUDE_MODELS,
   CURSOR_MODELS,
-<<<<<<< HEAD
   CODEX_MODELS,
   OPENCODE_MODELS,
-=======
   ZAI_MODELS,
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   THINKING_LEVELS,
   THINKING_LEVEL_LABELS,
   REASONING_EFFORT_LEVELS,
   REASONING_EFFORT_LABELS,
-} from '@/components/views/board-view/shared/model-constants';
-import { Check, ChevronsUpDown, Star, ChevronRight } from 'lucide-react';
+  PROFILE_ICONS,
+  ModelOption,
+} from '../../board-view/shared/model-constants';
+import { Check, ChevronsUpDown, Star, ChevronRight, Sparkles } from 'lucide-react';
 import { AnthropicIcon, CursorIcon, OpenAIIcon, OpenCodeIcon } from '@/components/ui/provider-icon';
 import { Button } from '@/components/ui/button';
 import {
@@ -254,20 +253,13 @@ export function PhaseModelSelector({
   }, [availableCursorModels, enabledCursorModels]);
 
   // Group models
-<<<<<<< HEAD
-  const { favorites, claude, cursor, codex, opencode } = React.useMemo(() => {
+  const { favorites, claude, cursor, codex, opencode, zai } = React.useMemo(() => {
     const favs: typeof CLAUDE_MODELS = [];
     const cModels: typeof CLAUDE_MODELS = [];
     const curModels: typeof CURSOR_MODELS = [];
     const codModels: typeof CODEX_MODELS = [];
     const ocModels: typeof OPENCODE_MODELS = [];
-=======
-  const { favorites, claude, cursor, zai } = React.useMemo(() => {
-    const favs: typeof CLAUDE_MODELS = [];
-    const cModels: typeof CLAUDE_MODELS = [];
-    const curModels: typeof CURSOR_MODELS = [];
     const zModels: typeof ZAI_MODELS = [];
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
 
     // Process Claude Models
     CLAUDE_MODELS.forEach((model) => {
@@ -296,7 +288,6 @@ export function PhaseModelSelector({
       }
     });
 
-<<<<<<< HEAD
     // Process Codex Models
     CODEX_MODELS.forEach((model) => {
       if (favoriteModels.includes(model.id)) {
@@ -321,10 +312,8 @@ export function PhaseModelSelector({
       cursor: curModels,
       codex: codModels,
       opencode: ocModels,
+      zai: zModels,
     };
-=======
-    return { favorites: favs, claude: cModels, cursor: curModels, zai: zModels };
->>>>>>> 2c058f11 (feat: Modularize AI providers, integrate Z.AI, and genericize model selection)
   }, [favoriteModels, availableCursorModels]);
 
   // Render Codex model item with secondary popover for reasoning effort (only for models that support it)

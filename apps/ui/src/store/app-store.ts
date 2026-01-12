@@ -124,6 +124,7 @@ export interface ApiKeys {
   anthropic: string;
   google: string;
   openai: string;
+  zai: string;
 }
 
 // Keyboard Shortcut with optional modifiers
@@ -1141,6 +1142,16 @@ const DEFAULT_AI_PROFILES: AIProfile[] = [
     isBuiltIn: true,
     icon: 'Sparkles',
   },
+  // Z.AI profiles
+  {
+    id: 'profile-zai-reasoning',
+    name: 'Z.AI Reasoning',
+    description: 'Z.AI GLM-4.7 for reasoning and coding.',
+    model: 'GLM-4.7',
+    provider: 'zai',
+    isBuiltIn: true,
+    icon: 'Zai',
+  },
 ];
 
 const initialState: AppState = {
@@ -1160,6 +1171,7 @@ const initialState: AppState = {
     anthropic: '',
     google: '',
     openai: '',
+    zai: '',
   },
   chatSessions: [],
   currentChatSession: null,
@@ -1178,8 +1190,8 @@ const initialState: AppState = {
   showProfilesOnly: false, // Default to showing all options (not profiles only)
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS, // Default keyboard shortcuts
   muteDoneSound: false, // Default to sound enabled (not muted)
-  enhancementModel: 'sonnet', // Default to sonnet for feature enhancement
-  validationModel: 'opus', // Default to opus for GitHub issue validation
+  enhancementModel: 'GLM-4.7', // Default to GLM-4.7 for feature enhancement
+  validationModel: 'GLM-4.7', // Default to GLM-4.7 for GitHub issue validation
   phaseModels: DEFAULT_PHASE_MODELS, // Phase-specific model configuration
   favoriteModels: [],
   enabledCursorModels: getAllCursorModelIds(), // All Cursor models enabled by default

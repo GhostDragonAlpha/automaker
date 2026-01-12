@@ -187,12 +187,12 @@ export function getModelForUseCase(
   }
 
   const defaultModels: Record<string, string> = {
-    spec: CLAUDE_MODEL_MAP['haiku'], // used to generate app specs
-    features: CLAUDE_MODEL_MAP['haiku'], // used to generate features from app specs
-    suggestions: CLAUDE_MODEL_MAP['haiku'], // used for suggestions
-    chat: CLAUDE_MODEL_MAP['haiku'], // used for chat
-    auto: CLAUDE_MODEL_MAP['opus'], // used to implement kanban cards
-    default: CLAUDE_MODEL_MAP['opus'],
+    spec: 'default', // used to generate app specs
+    features: 'default', // used to generate features from app specs
+    suggestions: 'default', // used for suggestions
+    chat: 'default', // used for chat
+    auto: 'default', // used to implement kanban cards
+    default: 'default',
   };
 
   return resolveModelString(defaultModels[useCase] || DEFAULT_MODELS.claude);

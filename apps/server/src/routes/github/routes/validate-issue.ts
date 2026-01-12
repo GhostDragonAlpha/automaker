@@ -317,7 +317,7 @@ export function createValidateIssueHandler(
         issueTitle,
         issueBody,
         issueLabels,
-        model = 'opus',
+        model = 'default',
         thinkingLevel,
         comments: rawComments,
         linkedPRs: rawLinkedPRs,

@@ -547,7 +547,7 @@ export function BoardView() {
         images: [],
         imagePaths: [],
         skipTests: defaultSkipTests,
-        model: 'opus' as const,
+        model: 'default' as const,
         thinkingLevel: 'none' as const,
         branchName: worktree.branch,
         priority: 1, // High priority for PR feedback
@@ -588,7 +588,7 @@ export function BoardView() {
         images: [],
         imagePaths: [],
         skipTests: defaultSkipTests,
-        model: 'opus' as const,
+        model: 'default' as const,
         thinkingLevel: 'none' as const,
         branchName: worktree.branch,
         priority: 1, // High priority for conflict resolution

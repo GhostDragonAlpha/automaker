@@ -25,31 +25,31 @@ export default defineConfig(({ command }) => {
       ...(skipElectron
         ? []
         : [
-            electron({
-              main: {
-                entry: 'src/main.ts',
-                vite: {
-                  build: {
-                    outDir: 'dist-electron',
-                    rollupOptions: {
-                      external: ['electron'],
-                    },
+          electron({
+            main: {
+              entry: 'src/main.ts',
+              vite: {
+                build: {
+                  outDir: 'dist-electron',
+                  rollupOptions: {
+                    external: ['electron'],
                   },
                 },
               },
-              preload: {
-                input: 'src/preload.ts',
-                vite: {
-                  build: {
-                    outDir: 'dist-electron',
-                    rollupOptions: {
-                      external: ['electron'],
-                    },
+            },
+            preload: {
+              input: 'src/preload.ts',
+              vite: {
+                build: {
+                  outDir: 'dist-electron',
+                  rollupOptions: {
+                    external: ['electron'],
                   },
                 },
               },
-            }),
-          ]),
+            },
+          }),
+        ]),
       TanStackRouterVite({
         target: 'react',
         autoCodeSplitting: true,

@@ -21,7 +21,7 @@ export function AgentView() {
   const [input, setInput] = useState('');
   const [currentTool, setCurrentTool] = useState<string | null>(null);
   const [showSessionManager, setShowSessionManager] = useState(true);
-  const [modelSelection, setModelSelection] = useState<PhaseModelEntry>({ model: 'sonnet' });
+  const [modelSelection, setModelSelection] = useState<PhaseModelEntry>({ model: 'default' });
 
   // Input ref for auto-focus
   const inputRef = useRef<HTMLTextAreaElement>(null);

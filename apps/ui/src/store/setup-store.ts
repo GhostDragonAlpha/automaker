@@ -79,6 +79,21 @@ export interface CodexAuthStatus {
   error?: string;
 }
 
+// Z.AI Auth Method
+export type ZaiAuthMethod =
+  | 'api_key_env' // ZAI_API_KEY environment variable
+  | 'api_key' // Manually stored API key
+  | 'none';
+
+// Z.AI Auth Status
+export interface ZaiAuthStatus {
+  authenticated: boolean;
+  method: ZaiAuthMethod;
+  hasApiKey?: boolean;
+  hasEnvApiKey?: boolean;
+  error?: string;
+}
+
 // Claude Auth Method - all possible authentication sources
 export type ClaudeAuthMethod =
   | 'oauth_token_env'
@@ -148,6 +163,9 @@ export interface SetupState {
   // OpenCode CLI state
   opencodeCliStatus: OpencodeCliStatus | null;
 
+  // Z.AI state
+  zaiAuthStatus: ZaiAuthStatus | null;
+
   // Setup preferences
   skipClaudeSetup: boolean;
 }
@@ -182,6 +200,9 @@ export interface SetupActions {
   // OpenCode CLI
   setOpencodeCliStatus: (status: OpencodeCliStatus | null) => void;
 
+  // Z.AI
+  setZaiAuthStatus: (status: ZaiAuthStatus | null) => void;
+
   // Preferences
   setSkipClaudeSetup: (skip: boolean) => void;
 }
@@ -214,6 +235,8 @@ const initialState: SetupState = {
   codexInstallProgress: { ...initialInstallProgress },
 
   opencodeCliStatus: null,
+
+  zaiAuthStatus: null,
 
   skipClaudeSetup: shouldSkipSetup,
 };
@@ -286,6 +309,9 @@ export const useSetupStore = create<SetupState & SetupActions>()((set, get) => (
 
   // OpenCode CLI
   setOpencodeCliStatus: (status) => set({ opencodeCliStatus: status }),
+
+  // Z.AI
+  setZaiAuthStatus: (status) => set({ zaiAuthStatus: status }),
 
   // Preferences
   setSkipClaudeSetup: (skip) => set({ skipClaudeSetup: skip }),

@@ -16,6 +16,7 @@ interface ApiKeyStatus {
   hasAnthropicKey: boolean;
   hasGoogleKey: boolean;
   hasOpenaiKey: boolean;
+  hasZaiKey: boolean;
 }
 
 /**
@@ -29,11 +30,14 @@ export function useApiKeyManagement() {
   const [anthropicKey, setAnthropicKey] = useState(apiKeys.anthropic);
   const [googleKey, setGoogleKey] = useState(apiKeys.google);
   const [openaiKey, setOpenaiKey] = useState(apiKeys.openai);
+  const [zaiKey, setZaiKey] = useState(apiKeys.zai);
 
   // Visibility toggles
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showGoogleKey, setShowGoogleKey] = useState(false);
+
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+  const [showZaiKey, setShowZaiKey] = useState(false);
 
   // Test connection states
   const [testingConnection, setTestingConnection] = useState(false);
@@ -41,7 +45,10 @@ export function useApiKeyManagement() {
   const [testingGeminiConnection, setTestingGeminiConnection] = useState(false);
   const [geminiTestResult, setGeminiTestResult] = useState<TestResult | null>(null);
   const [testingOpenaiConnection, setTestingOpenaiConnection] = useState(false);
+
   const [openaiTestResult, setOpenaiTestResult] = useState<TestResult | null>(null);
+  const [testingZaiConnection, setTestingZaiConnection] = useState(false);
+  const [zaiTestResult, setZaiTestResult] = useState<TestResult | null>(null);
 
   // API key status from environment
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus | null>(null);
@@ -53,7 +60,9 @@ export function useApiKeyManagement() {
   useEffect(() => {
     setAnthropicKey(apiKeys.anthropic);
     setGoogleKey(apiKeys.google);
+
     setOpenaiKey(apiKeys.openai);
+    setZaiKey(apiKeys.zai);
   }, [apiKeys]);
 
   // Check API key status from environment on mount
@@ -67,7 +76,9 @@ export function useApiKeyManagement() {
             setApiKeyStatus({
               hasAnthropicKey: status.hasAnthropicKey,
               hasGoogleKey: status.hasGoogleKey,
+
               hasOpenaiKey: status.hasOpenaiKey,
+              hasZaiKey: status.hasZaiKey,
             });
           }
         } catch (error) {
@@ -173,13 +184,76 @@ export function useApiKeyManagement() {
     }
   };
 
+  // Test Z.AI connection
+  const handleTestZaiConnection = async () => {
+    setTestingZaiConnection(true);
+    setZaiTestResult(null);
+
+    // Basic validation
+    if (!zaiKey || zaiKey.trim().length < 10) {
+      setZaiTestResult({
+        success: false,
+        message: 'Please enter a valid API key.',
+      });
+      setTestingZaiConnection(false);
+      return;
+    }
+
+    // TODO: Implement actual backend verification if needed
+    // For now, assume format is valid if user inputs it.
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate check
+
+    setZaiTestResult({
+      success: true,
+      message: 'API key format valid. Save to apply.',
+    });
+    setTestingZaiConnection(false);
+  };
+
   // Save API keys
-  const handleSave = () => {
+  const handleSave = async () => {
+    const api = getElectronAPI();
+
+    // Save to store
     setApiKeys({
       anthropic: anthropicKey,
       google: googleKey,
       openai: openaiKey,
+      zai: zaiKey,
     });
+
+    // Helper to check if a key is masked
+    const isMasked = (key: string | undefined | null) => {
+      if (!key) return false;
+      return key.includes('...');
+    };
+
+    // Save to backend via setup API
+    try {
+      if (api.setup?.storeApiKey) {
+        // We sync all non-empty, non-masked keys
+        const promises = [];
+
+        if (anthropicKey && !isMasked(anthropicKey)) {
+          promises.push(api.setup.storeApiKey('anthropic', anthropicKey));
+        }
+
+        if (openaiKey && !isMasked(openaiKey)) {
+          promises.push(api.setup.storeApiKey('openai', openaiKey));
+        }
+
+        if (zaiKey && !isMasked(zaiKey)) {
+          promises.push(api.setup.storeApiKey('zai', zaiKey));
+        }
+
+        if (promises.length > 0) {
+          await Promise.all(promises);
+        }
+      }
+    } catch (e) {
+      logger.error('Failed to save API keys to backend', e);
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -213,6 +287,15 @@ export function useApiKeyManagement() {
       testing: testingOpenaiConnection,
       onTest: handleTestOpenaiConnection,
       result: openaiTestResult,
+    },
+    zai: {
+      value: zaiKey,
+      setValue: setZaiKey,
+      show: showZaiKey,
+      setShow: setShowZaiKey,
+      testing: testingZaiConnection,
+      onTest: handleTestZaiConnection,
+      result: zaiTestResult,
     },
   };
 

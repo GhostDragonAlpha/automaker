@@ -260,7 +260,7 @@ export async function killPort(port) {
   log(`Killing process(es) on port ${port}: ${pids.join(', ')}`, 'yellow');
 
   for (const pid of pids) {
-    killProcess(pid);
+    await killProcessTree(pid);
   }
 
   // Wait for port to be freed (max 5 seconds)
@@ -288,13 +288,25 @@ export function killProcessTree(pid) {
       resolve();
       return;
     }
-    treeKill(pid, 'SIGTERM', (err) => {
-      if (err) {
-        treeKill(pid, 'SIGKILL', () => resolve());
-      } else {
-        resolve();
+
+    if (isWindows) {
+      try {
+        // Windows: Use taskkill with /T (Tree) and /F (Force)
+        execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+      } catch (e) {
+        // Ignore errors (process might already be gone)
       }
-    });
+      resolve();
+    } else {
+      // Unix: Use tree-kill
+      treeKill(pid, 'SIGTERM', (err) => {
+        if (err) {
+          treeKill(pid, 'SIGKILL', () => resolve());
+        } else {
+          resolve();
+        }
+      });
+    }
   });
 }
 
@@ -371,50 +383,18 @@ export async function resolvePortConfiguration({
   let webPort = defaultWebPort;
   let serverPort = defaultServerPort;
 
+  // Auto-kill any processes on our ports (no prompt)
   if (webPortInUse || serverPortInUse) {
     console.log('');
     if (webPortInUse) {
       const pids = getProcessesOnPort(defaultWebPort);
-      log(`⚠ Port ${defaultWebPort} is in use by process(es): ${pids.join(', ')}`, 'yellow');
+      log(`⚠ Port ${defaultWebPort} in use by PID(s): ${pids.join(', ')} - killing...`, 'yellow');
+      await killPort(defaultWebPort);
     }
     if (serverPortInUse) {
       const pids = getProcessesOnPort(defaultServerPort);
-      log(`⚠ Port ${defaultServerPort} is in use by process(es): ${pids.join(', ')}`, 'yellow');
-    }
-    console.log('');
-
-    while (true) {
-      const choice = await prompt(
-        'What would you like to do? (k)ill processes, (u)se different ports, or (c)ancel: '
-      );
-      const lowerChoice = choice.toLowerCase();
-
-      if (lowerChoice === 'k' || lowerChoice === 'kill') {
-        if (webPortInUse) {
-          await killPort(defaultWebPort);
-        } else {
-          log(`✓ Port ${defaultWebPort} is available`, 'green');
-        }
-        if (serverPortInUse) {
-          await killPort(defaultServerPort);
-        } else {
-          log(`✓ Port ${defaultServerPort} is available`, 'green');
-        }
-        break;
-      } else if (lowerChoice === 'u' || lowerChoice === 'use') {
-        webPort = await promptForPort('web', defaultWebPort);
-        serverPort = await promptForPort('server', defaultServerPort, webPort);
-        log(`Using ports: Web=${webPort}, Server=${serverPort}`, 'blue');
-        break;
-      } else if (lowerChoice === 'c' || lowerChoice === 'cancel') {
-        log('Cancelled.', 'yellow');
-        process.exit(0);
-      } else {
-        log(
-          'Invalid choice. Please enter k (kill), u (use different ports), or c (cancel).',
-          'red'
-        );
-      }
+      log(`⚠ Port ${defaultServerPort} in use by PID(s): ${pids.join(', ')} - killing...`, 'yellow');
+      await killPort(defaultServerPort);
     }
   } else {
     log(`✓ Port ${defaultWebPort} is available`, 'green');
@@ -515,9 +495,10 @@ export function printModeMenu({ isDev = false } = {}) {
 /**
  * Create a cleanup handler for spawned processes
  * @param {object} processes - Object with process references {server, web, electron, docker}
+ * @param {object} options - Options including ports to clean up
  * @returns {Function} - Cleanup function
  */
-export function createCleanupHandler(processes) {
+export function createCleanupHandler(processes, { webPort = 3007, serverPort = 3008 } = {}) {
   return async function cleanup() {
     console.log('\nCleaning up...');
 
@@ -540,25 +521,72 @@ export function createCleanupHandler(processes) {
     }
 
     await Promise.all(killPromises);
+
+    // Final fallback: Kill any remaining processes on our ports
+    // This catches zombie grandchildren that tree-kill missed
+    if (isWindows) {
+      log('Cleaning up any remaining port processes...', 'yellow');
+      await killPort(serverPort);
+      await killPort(webPort);
+    }
   };
 }
 
 /**
- * Setup signal handlers for graceful shutdown
+ * Setup signal handlers for graceful shutdown (Windows-compatible)
  * @param {Function} cleanup - Cleanup function
+ * @param {object} options - Options including ports to clean up
  */
-export function setupSignalHandlers(cleanup) {
+export function setupSignalHandlers(cleanup, { webPort = 3007, serverPort = 3008 } = {}) {
   let cleaningUp = false;
 
-  const handleExit = async () => {
+  const handleExit = async (signal) => {
     if (cleaningUp) return;
     cleaningUp = true;
+    log(`\nReceived ${signal}, shutting down...`, 'yellow');
     await cleanup();
     process.exit(0);
   };
 
-  process.on('SIGINT', () => handleExit());
-  process.on('SIGTERM', () => handleExit());
+  // Standard Unix signals
+  process.on('SIGINT', () => handleExit('SIGINT'));
+  process.on('SIGTERM', () => handleExit('SIGTERM'));
+
+  // Also handle SIGHUP (terminal closed)
+  if (process.platform !== 'win32') {
+    process.on('SIGHUP', () => handleExit('SIGHUP'));
+  }
+
+  // Windows-specific: 'exit' event fires when terminal is closed
+  // BUT async code can't run here, so we do sync kill
+  process.on('exit', (code) => {
+    if (cleaningUp) return; // Already cleaned up via signal
+    log(`Process exiting with code ${code}, killing child processes...`, 'yellow');
+
+    // Sync fallback: kill processes on our ports directly
+    // This works even when async handlers can't run
+    try {
+      if (isWindows) {
+        // Force kill anything on our ports synchronously
+        execSync(`FOR /F "tokens=5" %P IN ('netstat -ano ^| findstr :${serverPort} ^| findstr LISTENING') DO taskkill /F /PID %P 2>nul`, { stdio: 'ignore', shell: true });
+        execSync(`FOR /F "tokens=5" %P IN ('netstat -ano ^| findstr :${webPort} ^| findstr LISTENING') DO taskkill /F /PID %P 2>nul`, { stdio: 'ignore', shell: true });
+      }
+    } catch {
+      // Ignore errors - processes may already be dead
+    }
+  });
+
+  // Handle uncaught exceptions gracefully
+  process.on('uncaughtException', async (err) => {
+    console.error('Uncaught exception:', err);
+    await handleExit('uncaughtException');
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', async (reason) => {
+    console.error('Unhandled rejection:', reason);
+    await handleExit('unhandledRejection');
+  });
 }
 
 // =============================================================================

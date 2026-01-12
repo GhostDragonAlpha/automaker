@@ -87,7 +87,6 @@ export function WorldModelView() {
     setFollowUpImagePaths,
     setFollowUpPreviewMap,
     handleFollowUpDialogChange,
-    handleSendFollowUp,
   } = useFollowUpState();
 
   // Use persistence hook
@@ -138,7 +137,9 @@ export function WorldModelView() {
       (counts, feature) => {
         if (feature.status !== 'completed') {
           const branch = feature.branchName ?? 'main';
-          counts[branch] = (counts[branch] || 0) + 1;
+          if (typeof branch === 'string') {
+            counts[branch] = (counts[branch] || 0) + 1;
+          }
         }
         return counts;
       },
@@ -194,6 +195,7 @@ export function WorldModelView() {
     handleViewOutput,
     handleOutputModalNumberKeyPress,
     handleForceStopFeature,
+    handleSendFollowUp,
   } = useBoardActions({
     currentProject,
     features: hookFeatures,
@@ -285,11 +287,18 @@ export function WorldModelView() {
             title: term.title,
             description: `${subspecHeader}Generated via Smart Expand.\n\nRationale: ${term.rationale}\nContext: ${options.domainContext}\nWorld Model Layer: ${term.worldModelLayer || parentWorldModelLayer}`,
             category: term.category || parentCategory,
-            status: 'backlog',
-            steps: [],
-            phaseId: 'phase1',
             // Link to parent
             dependencies: [seedFeature.id],
+            // Defaults for required fields
+            images: [],
+            imagePaths: [],
+            skipTests: false,
+            model: 'default',
+            thinkingLevel: 'high',
+            branchName: '',
+            priority: 0,
+            planningMode: 'lite',
+            requirePlanApproval: false,
             // Preserve World Model layer
             ...(term.worldModelLayer !== undefined && { worldModelLayer: term.worldModelLayer }),
           });
@@ -331,19 +340,27 @@ export function WorldModelView() {
   }, [pendingPlanApproval, hookFeatures]);
 
   const handlePlanApprove = useCallback(
-    async (planContent: string) => {
+    async (planContent?: string) => {
       if (!pendingApprovalFeature || !currentProject) return;
 
       setIsPlanApprovalLoading(true);
       const featureId = pendingApprovalFeature.id;
+      // Use provided content or fall back to original plan content
+      const finalContent = planContent || (pendingApprovalFeature.planSpec as any)?.content || '';
 
       try {
         const api = getElectronAPI();
+        if (!api?.autoMode) {
+          toast.error('Auto Mode API not available');
+          setIsPlanApprovalLoading(false);
+          return;
+        }
+
         // Server derives workDir from feature.branchName
         const result = await api.autoMode.approvePlan(
           currentProject.path,
           featureId,
-          planContent
+          finalContent
           // No worktreePath - server derives
         );
 
@@ -353,9 +370,9 @@ export function WorldModelView() {
           updateFeature(featureId, {
             status: 'in_progress',
             planSpec: {
-              ...pendingApprovalFeature.planSpec,
+              ...(pendingApprovalFeature.planSpec || {}),
               status: 'approved',
-              content: planContent,
+              content: finalContent,
               reviewedByUser: true,
             },
           });
@@ -376,19 +393,28 @@ export function WorldModelView() {
   );
 
   const handlePlanReject = useCallback(
-    async (feedback: string) => {
+    async (feedback?: string) => {
       if (!pendingApprovalFeature || !currentProject) return;
+
+      // If no feedback provided, treat as cancellation/rejection without specific instructions
+      const finalFeedback = feedback || 'Plan rejected by user.';
 
       setIsPlanApprovalLoading(true);
       const featureId = pendingApprovalFeature.id;
 
       try {
         const api = getElectronAPI();
+        if (!api?.autoMode) {
+          toast.error('Auto Mode API not available');
+          setIsPlanApprovalLoading(false);
+          return;
+        }
+
         // Server derives workDir from feature.branchName
         const result = await api.autoMode.rejectPlan(
           currentProject.path,
           featureId,
-          feedback
+          finalFeedback
           // No worktreePath - server derives
         );
 
@@ -396,12 +422,15 @@ export function WorldModelView() {
           toast.success('Plan rejected, agent will regenerate');
           // Update feature status locally
           const currentFeature = hookFeatures.find((f) => f.id === featureId);
+          // @ts-ignore - Handle potential missing planSpec
+          const currentVersion = currentFeature?.planSpec?.version || 1;
+
           updateFeature(featureId, {
             status: 'backlog',
             planSpec: {
               status: 'rejected',
-              content: pendingPlanApproval.planContent,
-              version: currentFeature?.planSpec?.version || 1,
+              content: (pendingPlanApproval as any)?.planContent || '',
+              version: currentVersion,
               reviewedByUser: true,
             },
           });
