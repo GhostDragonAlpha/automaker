@@ -404,12 +404,27 @@ export function AgentOutputModal({
           <div className="flex-1 overflow-y-auto bg-zinc-950 rounded-lg p-4 min-h-[400px] max-h-[60vh] scrollbar-visible">
             <Markdown>{summary}</Markdown>
           </div>
+        ) : effectiveViewMode === 'parsed' ? (
+          <div className="flex-1 min-h-[400px] max-h-[60vh] bg-zinc-950 rounded-lg overflow-hidden flex flex-col">
+            {isLoading && !output ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground p-4">
+                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                Loading output...
+              </div>
+            ) : !output ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground p-4">
+                No output yet. The agent will stream output here as it works.
+              </div>
+            ) : (
+              <LogViewer output={output} className="h-full" />
+            )}
+          </div>
         ) : (
-          <>
+          <div className="flex flex-col flex-1 min-h-[400px] max-h-[60vh]">
             <div
               ref={scrollRef}
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto bg-zinc-950 rounded-lg p-4 font-mono text-xs min-h-[400px] max-h-[60vh] scrollbar-visible"
+              className="flex-1 overflow-y-auto bg-zinc-950 rounded-lg p-4 font-mono text-xs scrollbar-visible"
             >
               {isLoading && !output ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -420,19 +435,17 @@ export function AgentOutputModal({
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   No output yet. The agent will stream output here as it works.
                 </div>
-              ) : effectiveViewMode === 'parsed' ? (
-                <LogViewer output={output} />
               ) : (
                 <div className="whitespace-pre-wrap break-words text-zinc-300">{output}</div>
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground text-center flex-shrink-0">
+            <div className="text-xs text-muted-foreground text-center flex-shrink-0 mt-1">
               {autoScrollRef.current
                 ? 'Auto-scrolling enabled'
                 : 'Scroll to bottom to enable auto-scroll'}
             </div>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
