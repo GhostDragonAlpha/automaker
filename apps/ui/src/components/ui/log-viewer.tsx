@@ -415,9 +415,12 @@ export function LogViewer({ output, className }: LogViewerProps) {
   const [atBottom, setAtBottom] = useState(true);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
+  // Use deferred value for output to prevent blocking the UI during rapid updates
+  const deferredOutput = useDeferredValue(output);
+
   // Parse entries and compute initial expanded state together
   const { entries, initialExpandedIds } = useMemo(() => {
-    const parsedEntries = parseLogOutput(output);
+    const parsedEntries = parseLogOutput(deferredOutput);
     const toExpand: string[] = [];
 
     parsedEntries.forEach((entry) => {
@@ -431,7 +434,7 @@ export function LogViewer({ output, className }: LogViewerProps) {
       entries: parsedEntries,
       initialExpandedIds: new Set(toExpand),
     };
-  }, [output]);
+  }, [deferredOutput]);
 
   // Merge initial expanded IDs with user-toggled ones
   // Use a ref to track if we've applied initial state
