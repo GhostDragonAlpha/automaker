@@ -14,6 +14,7 @@
     "fix:lockfile": "node scripts/fix-lockfile-urls.mjs",
     "dev": "node dev.mjs",
     "dev:web": "npm run dev:web --workspace=apps/ui",
+    "_dev:web": "npm run dev:web --workspace=apps/ui",
     "_dev:electron": "npm run dev:electron --workspace=apps/ui",
     "_dev:electron:debug": "npm run dev:electron:debug --workspace=apps/ui",
     "_dev:electron:wsl": "npm run dev:electron:wsl --workspace=apps/ui",
