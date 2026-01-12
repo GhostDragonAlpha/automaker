@@ -56,8 +56,11 @@ app.commandLine.appendSwitch('force-gpu-mem-available-mb', '24000');
 app.commandLine.appendSwitch('max-active-webgl-contexts', '32');
 app.commandLine.appendSwitch('renderer-process-limit', '100');
 
-// CPU / RAM MAXIMIZATION: Unlock V8 Heap to 64GB
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=65536');
+// CPU / RAM MAXIMIZATION: Unlock V8 Heap to 64GB + Turbo GC (Multi-threaded)
+app.commandLine.appendSwitch(
+  'js-flags',
+  '--max-old-space-size=65536 --parallel-marking --concurrent-sweeping --min-semi-space-size=64'
+);
 
 // Development environment
 const isDev = !app.isPackaged;
