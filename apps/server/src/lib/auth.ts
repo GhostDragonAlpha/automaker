@@ -291,8 +291,40 @@ function checkAuthentication(
   query: Record<string, string | undefined>,
   cookies: Record<string, string | undefined>
 ): AuthResult {
-  // FORCE BYPASS - Always return authenticated for local web dev
-  return { authenticated: true };
+  // Check for API key in header (Electron mode)
+  const headerKey = headers['x-api-key'] as string | undefined;
+  if (headerKey) {
+    if (validateApiKey(headerKey)) {
+      return { authenticated: true };
+    }
+    return { authenticated: false, errorType: 'invalid_api_key' };
+  }
+
+  // Check for session token in header (web mode with explicit token)
+  const sessionTokenHeader = headers['x-session-token'] as string | undefined;
+  if (sessionTokenHeader) {
+    if (validateSession(sessionTokenHeader)) {
+      return { authenticated: true };
+    }
+    return { authenticated: false, errorType: 'invalid_session' };
+  }
+
+  // Check for API key in query parameter (fallback)
+  const queryKey = query.apiKey;
+  if (queryKey) {
+    if (validateApiKey(queryKey)) {
+      return { authenticated: true };
+    }
+    return { authenticated: false, errorType: 'invalid_api_key' };
+  }
+
+  // Check for session cookie (web mode)
+  const sessionToken = cookies[SESSION_COOKIE_NAME];
+  if (sessionToken && validateSession(sessionToken)) {
+    return { authenticated: true };
+  }
+
+  return { authenticated: false, errorType: 'no_auth' };
 }
 
 /**
@@ -305,8 +337,23 @@ function checkAuthentication(
  * 4. Session cookie (for web mode)
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  // FORCE BYPASS FOR LOCAL Z.AI DEV - Always authenticate
-  next();
+  const result = checkAuthentication(
+    req.headers as Record<string, string | string[] | undefined>,
+    req.query as Record<string, string | undefined>,
+    (req.cookies || {}) as Record<string, string | undefined>
+  );
+
+  if (result.authenticated) {
+    next();
+    return;
+  }
+
+  res.status(401).json({
+    success: false,
+    error: 'Unauthorized',
+    code: 'UNAUTHORIZED',
+    type: result.errorType,
+  });
 }
 
 /**
