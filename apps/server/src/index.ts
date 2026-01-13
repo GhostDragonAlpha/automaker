@@ -65,6 +65,7 @@ import { createPipelineRoutes } from './routes/pipeline/index.js';
 import { pipelineService } from './services/pipeline-service.js';
 import { createIdeationRoutes } from './routes/ideation/index.js';
 import { IdeationService } from './services/ideation-service.js';
+import { createTheColonyRoutes } from './routes/the-colony/index.js';
 
 // Providers will be loaded dynamically after environment setup
 
@@ -189,6 +190,16 @@ const ideationService = new IdeationService(events, settingsService, featureLoad
   // Load providers dynamically to ensure they see the updated environment
   await import('@automaker/provider-claude');
   await import('@automaker/provider-zai');
+
+  // Initialize AI Gateway (must be after providers are registered)
+  const { aiGateway } = await import('./services/ai-gateway.js');
+  await aiGateway.init();
+  logger.info('AI Gateway initialized');
+
+  // Initialize Universal Gateway (Vercel AI SDK)
+  const { universalGateway } = await import('./services/universal-gateway.js');
+  await universalGateway.init();
+  logger.info('Universal Gateway initialized');
 
   await agentService.initialize();
   logger.info('Agent service initialized');

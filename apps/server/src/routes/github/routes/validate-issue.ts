@@ -1,13 +1,13 @@
 /**
- * POST /validate-issue endpoint - Validate a GitHub issue using Claude SDK or Cursor (async)
+ * POST /validate-issue endpoint - Validate a GitHub issue using provider-agnostic routing
  *
  * Scans the codebase to determine if an issue is valid, invalid, or needs clarification.
  * Runs asynchronously and emits events for progress and completion.
- * Supports both Claude models and Cursor models.
+ * Supports all providers via executeQuery (Z.AI, Claude, Cursor, etc.).
  */
 
 import type { Request, Response } from 'express';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { executeQuery } from '../../../lib/execute-query.js';
 import type { EventEmitter } from '../../../lib/events.js';
 import type {
   IssueValidationResult,
@@ -20,10 +20,9 @@ import type {
 } from '@automaker/types';
 import { isCursorModel, DEFAULT_PHASE_MODELS, stripProviderPrefix } from '@automaker/types';
 import { resolvePhaseModel } from '@automaker/model-resolver';
-import { createSuggestionsOptions } from '../../../lib/sdk-options.js';
 import { extractJson } from '../../../lib/json-extractor.js';
 import { writeValidation } from '../../../lib/validation-storage.js';
-import { ProviderFactory } from '../../../providers/provider-factory.js';
+import { aiGateway } from '../../../services/ai-gateway.js';
 import {
   issueValidationSchema,
   ISSUE_VALIDATION_SYSTEM_PROMPT,
@@ -119,10 +118,6 @@ async function runValidation(
       // Use Cursor provider for Cursor models
       logger.info(`Using Cursor provider for validation with model: ${model}`);
 
-      const provider = ProviderFactory.getProviderForModel(model);
-      // Strip provider prefix - providers expect bare model IDs
-      const bareModel = stripProviderPrefix(model);
-
       // For Cursor, include the system prompt and schema in the user prompt
       const cursorPrompt = `${ISSUE_VALIDATION_SYSTEM_PROMPT}
 
@@ -137,9 +132,10 @@ Your entire response should be valid JSON starting with { and ending with }. No 
 
 ${prompt}`;
 
-      for await (const msg of provider.executeQuery({
+      // Use AIGateway for parallel-safe, provider-agnostic execution
+      for await (const msg of aiGateway.execute({
         prompt: cursorPrompt,
-        model: bareModel,
+        model,
         cwd: projectPath,
         readOnly: true, // Issue validation only reads code, doesn't write
       })) {
@@ -171,48 +167,32 @@ ${prompt}`;
         validationResult = extractJson<IssueValidationResult>(responseText, { logger });
       }
     } else {
-      // Use Claude SDK for Claude models
-      logger.info(`Using Claude provider for validation with model: ${model}`);
+      // Use default provider via executeQuery (provider-agnostic)
+      logger.info(`Using executeQuery for validation with model: ${model}`);
 
-      // Load autoLoadClaudeMd setting
-      const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
-        projectPath,
-        settingsService,
-        '[ValidateIssue]'
-      );
+      // Build prompt with system prompt, schema, and validation instructions
+      const structuredPrompt = `${ISSUE_VALIDATION_SYSTEM_PROMPT}
 
-      // Use thinkingLevel from request if provided, otherwise fall back to settings
-      let effectiveThinkingLevel: ThinkingLevel | undefined = thinkingLevel;
-      if (!effectiveThinkingLevel) {
-        const settings = await settingsService?.getGlobalSettings();
-        const phaseModelEntry =
-          settings?.phaseModels?.validationModel || DEFAULT_PHASE_MODELS.validationModel;
-        const resolved = resolvePhaseModel(phaseModelEntry);
-        effectiveThinkingLevel = resolved.thinkingLevel;
-      }
+CRITICAL INSTRUCTIONS:
+1. DO NOT write any files. Return the JSON in your response only.
+2. Respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
+3. The JSON must match this exact schema:
 
-      // Create SDK options with structured output and abort controller
-      const options = createSuggestionsOptions({
+${JSON.stringify(issueValidationSchema, null, 2)}
+
+Your entire response should be valid JSON starting with { and ending with }. No text before or after.
+
+${prompt}`;
+
+      for await (const msg of executeQuery({
+        prompt: structuredPrompt,
+        model: model as string,
         cwd: projectPath,
-        model: model as ModelAlias,
-        systemPrompt: ISSUE_VALIDATION_SYSTEM_PROMPT,
-        abortController,
-        autoLoadClaudeMd,
-        thinkingLevel: effectiveThinkingLevel,
-        outputFormat: {
-          type: 'json_schema',
-          schema: issueValidationSchema as Record<string, unknown>,
-        },
-      });
-
-      // Execute the query
-      const stream = query({ prompt, options });
-
-      for await (const msg of stream) {
-        // Collect assistant text for debugging and emit progress
+        readOnly: true, // Issue validation only reads code
+      })) {
         if (msg.type === 'assistant' && msg.message?.content) {
           for (const block of msg.message.content) {
-            if (block.type === 'text') {
+            if (block.type === 'text' && block.text) {
               responseText += block.text;
 
               // Emit progress event
@@ -225,25 +205,14 @@ ${prompt}`;
               events.emit('issue-validation:event', progressEvent);
             }
           }
+        } else if (msg.type === 'result' && msg.subtype === 'success') {
+          responseText = (msg as any).result || responseText;
         }
+      }
 
-        // Extract structured output on success
-        if (msg.type === 'result' && msg.subtype === 'success') {
-          const resultMsg = msg as { structured_output?: IssueValidationResult };
-          if (resultMsg.structured_output) {
-            validationResult = resultMsg.structured_output;
-            logger.debug('Received structured output:', validationResult);
-          }
-        }
-
-        // Handle errors
-        if (msg.type === 'result') {
-          const resultMsg = msg as { subtype?: string };
-          if (resultMsg.subtype === 'error_max_structured_output_retries') {
-            logger.error('Failed to produce valid structured output after retries');
-            throw new Error('Could not produce valid validation output');
-          }
-        }
+      // Parse JSON from the response text
+      if (responseText) {
+        validationResult = extractJson<IssueValidationResult>(responseText, { logger });
       }
     }
 

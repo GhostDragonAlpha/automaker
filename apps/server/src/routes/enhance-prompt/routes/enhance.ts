@@ -10,7 +10,7 @@ import { getQueryService } from '@automaker/providers-core';
 import { createLogger } from '@automaker/utils';
 import { resolveModelString } from '@automaker/model-resolver';
 import { CLAUDE_MODEL_MAP, isCursorModel, stripProviderPrefix } from '@automaker/types';
-import { ProviderFactory } from '../../../providers/provider-factory.js';
+import { aiGateway } from '../../../services/ai-gateway.js';
 import type { SettingsService } from '../../../services/settings-service.js';
 import { getPromptCustomization } from '../../../lib/settings-helpers.js';
 import {
@@ -59,15 +59,12 @@ interface EnhanceErrorResponse {
  * @returns The enhanced text
  */
 async function executeWithCursor(prompt: string, model: string): Promise<string> {
-  const provider = ProviderFactory.getProviderForModel(model);
-  // Strip provider prefix - providers expect bare model IDs
-  const bareModel = stripProviderPrefix(model);
-
   let responseText = '';
 
-  for await (const msg of provider.executeQuery({
+  // Use AIGateway for parallel-safe, provider-agnostic execution
+  for await (const msg of aiGateway.execute({
     prompt,
-    model: bareModel,
+    model,
     cwd: process.cwd(), // Enhancement doesn't need a specific working directory
     readOnly: true, // Prompt enhancement only generates text, doesn't write files
   })) {

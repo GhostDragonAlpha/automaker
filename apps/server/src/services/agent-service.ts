@@ -18,6 +18,7 @@ import {
   getUserFriendlyErrorMessage,
 } from '@automaker/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
+import { aiGateway } from './ai-gateway.js';
 import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
 import { PathNotAllowedError } from '@automaker/platform';
 import type { SettingsService } from './settings-service.js';
@@ -355,31 +356,6 @@ export class AgentService {
         }
       }
 
-      // Get provider for this model (with prefix)
-      const provider = ProviderFactory.getProviderForModel(effectiveModel);
-
-      // Strip provider prefix - providers should receive bare model IDs
-      const bareModel = stripProviderPrefix(effectiveModel);
-
-      // Build options for provider
-      const options: ExecuteOptions = {
-        prompt: '', // Will be set below based on images
-        model: bareModel, // Bare model ID (e.g., "gpt-5.1-codex-max", "composer-1")
-        originalModel: effectiveModel, // Original with prefix for logging (e.g., "codex-gpt-5.1-codex-max")
-        cwd: effectiveWorkDir,
-        systemPrompt: sdkOptions.systemPrompt,
-        maxTurns: maxTurns,
-        allowedTools: allowedTools,
-        abortController: session.abortController!,
-        conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
-        settingSources: settingSources.length > 0 ? settingSources : undefined,
-        sdkSessionId: session.sdkSessionId, // Pass SDK session ID for resuming
-        mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined, // Pass MCP servers configuration
-        agents: customSubagents, // Pass custom subagents for task delegation
-        thinkingLevel: effectiveThinkingLevel, // Pass thinking level for Claude models
-        reasoningEffort: effectiveReasoningEffort, // Pass reasoning effort for Codex models
-      };
-
       // Build prompt content with images
       const { content: promptContent } = await buildPromptWithImages(
         message,
@@ -388,11 +364,21 @@ export class AgentService {
         true // include image paths in text
       );
 
-      // Set the prompt in options
-      options.prompt = promptContent;
-
-      // Execute via provider
-      const stream = provider.executeQuery(options);
+      // Execute via AIGateway for parallel-safe, provider-agnostic execution
+      const stream = aiGateway.execute({
+        prompt: promptContent,
+        model: effectiveModel,
+        cwd: effectiveWorkDir,
+        systemPrompt: sdkOptions.systemPrompt,
+        maxTurns,
+        allowedTools,
+        abortController: session.abortController!,
+        conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
+        mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
+        agents: customSubagents,
+        thinkingLevel: effectiveThinkingLevel,
+        reasoningEffort: effectiveReasoningEffort,
+      });
 
       let currentAssistantMessage: Message | null = null;
       let responseText = '';
