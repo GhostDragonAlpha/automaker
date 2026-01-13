@@ -1,23 +1,23 @@
 /**
- * Universal AI Gateway using Vercel AI SDK
+ * Universal AI Gateway - COMPLETE MARKET COVERAGE
  *
- * Unified interface to ALL AI providers through Vercel's battle-tested SDK.
+ * Unified interface to ALL major AI providers through Vercel AI SDK.
  * Licensed under Apache 2.0 - safe for commercial use.
  *
- * Supported Providers:
- * - OpenAI (GPT-4o, o1, o3)
- * - Anthropic (Claude)
- * - Google (Gemini)
- * - Z.AI (GLM) - via OpenAI-compatible
- * - Mistral (Mistral Large, Codestral)
- * - Cohere (Command R+)
- * - xAI (Grok)
- * - Groq (Llama, Mixtral)
- * - Azure OpenAI
- * - Amazon Bedrock
+ * OFFICIAL VERCEL SDK PROVIDERS (17):
+ * - OpenAI, Anthropic, Google, Google Vertex, Mistral, Cohere, xAI,
+ * - Groq, Amazon Bedrock, Azure, Together.ai, Fireworks, DeepInfra,
+ * - DeepSeek, Cerebras, Perplexity, Baseten
+ *
+ * OPENAI-COMPATIBLE PROVIDERS (10+):
+ * - Z.AI, OpenRouter, Ollama, Replicate, Anyscale, LM Studio,
+ * - Novita, SambaNova, Hyperbolic, Lepton, vLLM, etc.
+ *
+ * CLI-BASED PROVIDERS (3):
+ * - Cursor, Codex, Claude CLI
  */
 
-import { generateText, streamText, CoreMessage } from 'ai';
+import { generateText, streamText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -30,16 +30,61 @@ import { createLogger } from '@automaker/utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Dynamic imports for optional providers (may not be installed)
+let createGoogleVertex: any;
+let createTogetherAI: any;
+let createFireworks: any;
+let createDeepInfra: any;
+let createDeepSeek: any;
+let createCerebras: any;
+let createPerplexity: any;
+let createBaseten: any;
+let createAmazonBedrock: any;
+let createAzure: any;
+
+// Try to import additional providers
+try {
+  createGoogleVertex = require('@ai-sdk/google-vertex').createVertex;
+} catch {}
+try {
+  createTogetherAI = require('@ai-sdk/togetherai').createTogetherAI;
+} catch {}
+try {
+  createFireworks = require('@ai-sdk/fireworks').createFireworks;
+} catch {}
+try {
+  createDeepInfra = require('@ai-sdk/deepinfra').createDeepInfra;
+} catch {}
+try {
+  createDeepSeek = require('@ai-sdk/deepseek').createDeepSeek;
+} catch {}
+try {
+  createCerebras = require('@ai-sdk/cerebras').createCerebras;
+} catch {}
+try {
+  createPerplexity = require('@ai-sdk/perplexity').createPerplexity;
+} catch {}
+try {
+  createBaseten = require('@ai-sdk/baseten').createBaseten;
+} catch {}
+try {
+  createAmazonBedrock = require('@ai-sdk/amazon-bedrock').createAmazonBedrock;
+} catch {}
+try {
+  createAzure = require('@ai-sdk/azure').createAzure;
+} catch {}
+
 const logger = createLogger('UniversalGateway');
 
 /**
- * Provider definitions
+ * Provider definition
  */
 interface ProviderDef {
   name: string;
   envVar: string;
-  models: string[];
-  factory: (apiKey: string) => any;
+  patterns: string[]; // Model name patterns to match
+  factory: (apiKey: string) => any | null;
+  requiresAuth?: boolean;
 }
 
 /**
@@ -47,50 +92,206 @@ interface ProviderDef {
  */
 const CLI_PROVIDERS = ['cursor', 'claude-cli', 'codex'];
 
+/**
+ * All provider definitions - COMPLETE MARKET COVERAGE
+ */
 const PROVIDERS: ProviderDef[] = [
+  // === TIER 1: Major Cloud Providers ===
   {
     name: 'openai',
     envVar: 'OPENAI_API_KEY',
-    models: ['gpt-4o', 'gpt-4', 'gpt-3.5', 'o1', 'o3'],
-    factory: (key) => createOpenAI({ apiKey: key }),
+    patterns: ['gpt', 'o1-', 'o3-', 'dall-e', 'whisper', 'tts'],
+    factory: (k) => createOpenAI({ apiKey: k }),
   },
   {
     name: 'anthropic',
     envVar: 'ANTHROPIC_API_KEY',
-    models: ['claude'],
-    factory: (key) => createAnthropic({ apiKey: key }),
+    patterns: ['claude'],
+    factory: (k) => createAnthropic({ apiKey: k }),
   },
   {
     name: 'google',
     envVar: 'GOOGLE_API_KEY',
-    models: ['gemini'],
-    factory: (key) => createGoogleGenerativeAI({ apiKey: key }),
+    patterns: ['gemini'],
+    factory: (k) => createGoogleGenerativeAI({ apiKey: k }),
+  },
+  {
+    name: 'google-vertex',
+    envVar: 'GOOGLE_APPLICATION_CREDENTIALS',
+    patterns: ['vertex'],
+    factory: (k) => createGoogleVertex?.(),
+  },
+
+  // === TIER 2: Enterprise & Specialized ===
+  {
+    name: 'azure',
+    envVar: 'AZURE_API_KEY',
+    patterns: ['azure'],
+    factory: (k) => createAzure?.({ apiKey: k }),
+  },
+  {
+    name: 'bedrock',
+    envVar: 'AWS_ACCESS_KEY_ID',
+    patterns: ['bedrock', 'amazon', 'titan'],
+    factory: (k) => createAmazonBedrock?.(),
   },
   {
     name: 'mistral',
     envVar: 'MISTRAL_API_KEY',
-    models: ['mistral', 'codestral'],
-    factory: (key) => createMistral({ apiKey: key }),
+    patterns: ['mistral', 'codestral', 'pixtral'],
+    factory: (k) => createMistral({ apiKey: k }),
   },
   {
     name: 'cohere',
     envVar: 'COHERE_API_KEY',
-    models: ['command'],
-    factory: (key) => createCohere({ apiKey: key }),
+    patterns: ['command', 'embed', 'rerank'],
+    factory: (k) => createCohere({ apiKey: k }),
   },
-  {
-    name: 'xai',
-    envVar: 'XAI_API_KEY',
-    models: ['grok'],
-    factory: (key) => createXai({ apiKey: key }),
-  },
+
+  // === TIER 3: Fast Inference ===
   {
     name: 'groq',
     envVar: 'GROQ_API_KEY',
-    models: ['llama', 'mixtral'],
-    factory: (key) => createGroq({ apiKey: key }),
+    patterns: ['groq'],
+    factory: (k) => createGroq({ apiKey: k }),
+  },
+  {
+    name: 'cerebras',
+    envVar: 'CEREBRAS_API_KEY',
+    patterns: ['cerebras'],
+    factory: (k) => createCerebras?.({ apiKey: k }),
+  },
+  {
+    name: 'fireworks',
+    envVar: 'FIREWORKS_API_KEY',
+    patterns: ['fireworks', 'accounts/fireworks'],
+    factory: (k) => createFireworks?.({ apiKey: k }),
+  },
+
+  // === TIER 4: Specialized/Research ===
+  {
+    name: 'xai',
+    envVar: 'XAI_API_KEY',
+    patterns: ['grok'],
+    factory: (k) => createXai({ apiKey: k }),
+  },
+  {
+    name: 'perplexity',
+    envVar: 'PERPLEXITY_API_KEY',
+    patterns: ['pplx', 'perplexity', 'sonar'],
+    factory: (k) => createPerplexity?.({ apiKey: k }),
+  },
+  {
+    name: 'deepseek',
+    envVar: 'DEEPSEEK_API_KEY',
+    patterns: ['deepseek'],
+    factory: (k) => createDeepSeek?.({ apiKey: k }),
+  },
+  {
+    name: 'deepinfra',
+    envVar: 'DEEPINFRA_API_KEY',
+    patterns: ['deepinfra'],
+    factory: (k) => createDeepInfra?.({ apiKey: k }),
+  },
+  {
+    name: 'together',
+    envVar: 'TOGETHER_API_KEY',
+    patterns: ['together', 'togethercomputer'],
+    factory: (k) => createTogetherAI?.({ apiKey: k }),
+  },
+  {
+    name: 'baseten',
+    envVar: 'BASETEN_API_KEY',
+    patterns: ['baseten'],
+    factory: (k) => createBaseten?.({ apiKey: k }),
   },
 ];
+
+/**
+ * OpenAI-compatible providers (use createOpenAI with custom baseURL)
+ */
+const OPENAI_COMPATIBLE: {
+  name: string;
+  envVar: string;
+  baseURL: string;
+  patterns: string[];
+  tokenGen?: (k: string) => string;
+}[] = [
+  {
+    name: 'zai',
+    envVar: 'ZAI_API_KEY',
+    baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+    patterns: ['glm', 'zai', 'zhipu'],
+    tokenGen: generateZaiToken,
+  },
+  {
+    name: 'openrouter',
+    envVar: 'OPENROUTER_API_KEY',
+    baseURL: 'https://openrouter.ai/api/v1',
+    patterns: ['openrouter/'],
+  },
+  {
+    name: 'ollama',
+    envVar: 'OLLAMA_HOST',
+    baseURL: 'http://localhost:11434/v1',
+    patterns: ['ollama/'],
+  },
+  {
+    name: 'replicate',
+    envVar: 'REPLICATE_API_KEY',
+    baseURL: 'https://openai-proxy.replicate.com/v1',
+    patterns: ['replicate/'],
+  },
+  {
+    name: 'anyscale',
+    envVar: 'ANYSCALE_API_KEY',
+    baseURL: 'https://api.endpoints.anyscale.com/v1',
+    patterns: ['anyscale/'],
+  },
+  {
+    name: 'novita',
+    envVar: 'NOVITA_API_KEY',
+    baseURL: 'https://api.novita.ai/v3/openai',
+    patterns: ['novita/'],
+  },
+  {
+    name: 'sambanova',
+    envVar: 'SAMBANOVA_API_KEY',
+    baseURL: 'https://api.sambanova.ai/v1',
+    patterns: ['sambanova/'],
+  },
+  {
+    name: 'hyperbolic',
+    envVar: 'HYPERBOLIC_API_KEY',
+    baseURL: 'https://api.hyperbolic.xyz/v1',
+    patterns: ['hyperbolic/'],
+  },
+  {
+    name: 'lepton',
+    envVar: 'LEPTON_API_KEY',
+    baseURL: 'https://llama3-1-405b.lepton.run/api/v1',
+    patterns: ['lepton/'],
+  },
+  {
+    name: 'lmstudio',
+    envVar: 'LMSTUDIO_HOST',
+    baseURL: 'http://localhost:1234/v1',
+    patterns: ['lmstudio/'],
+  },
+];
+
+/**
+ * Generate Z.AI JWT token
+ */
+function generateZaiToken(apiKey: string): string {
+  const [id, secret] = apiKey.split('.');
+  if (!id || !secret) return apiKey;
+  const now = Date.now();
+  return jwt.sign({ api_key: id, exp: now + 210000, timestamp: now }, secret, {
+    algorithm: 'HS256',
+    header: { alg: 'HS256', sign_type: 'SIGN' } as any,
+  });
+}
 
 /**
  * Universal execution options
@@ -101,7 +302,6 @@ export interface UniversalExecuteOptions {
   systemPrompt?: string;
   maxTokens?: number;
   temperature?: number;
-  stream?: boolean;
 }
 
 /**
@@ -112,26 +312,18 @@ export class UniversalGateway {
   private credentials: Record<string, string> = {};
   private initialized = false;
 
-  constructor() {}
-
-  /**
-   * Initialize the gateway
-   */
   async init(): Promise<void> {
     if (this.initialized) return;
-
     logger.info('[UniversalGateway] Initializing...');
     await this.loadCredentials();
     this.createProviders();
     this.initialized = true;
+    const count = this.providers.size;
     logger.info(
-      `[UniversalGateway] Ready with ${this.providers.size} providers: ${[...this.providers.keys()].join(', ')}`
+      `[UniversalGateway] Ready with ${count} providers: ${[...this.providers.keys()].join(', ')}`
     );
   }
 
-  /**
-   * Load credentials from credentials.json and environment
-   */
   private async loadCredentials(): Promise<void> {
     const credPath = path.join(
       process.env.APPDATA || process.env.HOME || '',
@@ -147,110 +339,56 @@ export class UniversalGateway {
           for (const [key, value] of Object.entries(creds.apiKeys)) {
             if (value && typeof value === 'string') {
               this.credentials[key] = value.trim();
-              const envVar = this.getEnvVarName(key);
-              process.env[envVar] = value.trim();
+              process.env[this.getEnvVar(key)] = value.trim();
               logger.info(`[UniversalGateway] Loaded ${key} from credentials.json`);
             }
           }
         }
       }
-    } catch (err) {
-      logger.warn('[UniversalGateway] Could not load credentials.json');
-    }
+    } catch {}
 
     // Load from environment
-    for (const provider of PROVIDERS) {
-      const key = provider.name;
-      if (!this.credentials[key] && process.env[provider.envVar]) {
-        this.credentials[key] = process.env[provider.envVar]!.trim();
-        logger.info(`[UniversalGateway] Loaded ${key} from environment`);
+    for (const p of [...PROVIDERS, ...OPENAI_COMPATIBLE]) {
+      if (!this.credentials[p.name] && process.env[p.envVar]) {
+        this.credentials[p.name] = process.env[p.envVar]!.trim();
+        logger.info(`[UniversalGateway] Loaded ${p.name} from environment`);
       }
     }
-
-    // Also check ZAI (special handling)
-    if (!this.credentials.zai && process.env.ZAI_API_KEY) {
-      this.credentials.zai = process.env.ZAI_API_KEY.trim();
-      logger.info('[UniversalGateway] Loaded zai from environment');
-    }
   }
 
-  private getEnvVarName(provider: string): string {
-    const providerDef = PROVIDERS.find((p) => p.name === provider);
-    return providerDef?.envVar || `${provider.toUpperCase()}_API_KEY`;
+  private getEnvVar(name: string): string {
+    const p = [...PROVIDERS, ...OPENAI_COMPATIBLE].find((x) => x.name === name);
+    return p?.envVar || `${name.toUpperCase().replace(/-/g, '_')}_API_KEY`;
   }
 
-  /**
-   * Create provider instances
-   */
   private createProviders(): void {
-    // Standard providers
-    for (const providerDef of PROVIDERS) {
-      if (this.credentials[providerDef.name]) {
-        this.providers.set(
-          providerDef.name,
-          providerDef.factory(this.credentials[providerDef.name])
-        );
+    // Official SDK providers
+    for (const p of PROVIDERS) {
+      const key = this.credentials[p.name];
+      if (key || !p.requiresAuth) {
+        try {
+          const instance = p.factory(key || '');
+          if (instance) this.providers.set(p.name, instance);
+        } catch {}
       }
     }
 
-    // Z.AI (OpenAI-compatible with JWT auth)
-    if (this.credentials.zai) {
-      this.providers.set(
-        'zai',
-        createOpenAI({
-          apiKey: this.generateZaiToken(this.credentials.zai),
-          baseURL: 'https://open.bigmodel.cn/api/paas/v4',
-        })
-      );
-    }
-
-    // OpenRouter (any model via proxy)
-    if (this.credentials.openrouter || process.env.OPENROUTER_API_KEY) {
-      const key = this.credentials.openrouter || process.env.OPENROUTER_API_KEY!;
-      this.providers.set(
-        'openrouter',
-        createOpenAI({
-          apiKey: key,
-          baseURL: 'https://openrouter.ai/api/v1',
-        })
-      );
-    }
-
-    // Ollama (local models)
-    if (
-      process.env.OLLAMA_HOST ||
-      fs.existsSync('/usr/local/bin/ollama') ||
-      process.platform === 'win32'
-    ) {
-      const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
-      this.providers.set(
-        'ollama',
-        createOpenAI({
-          apiKey: 'ollama',
-          baseURL: `${host}/v1`,
-        })
-      );
+    // OpenAI-compatible providers
+    for (const p of OPENAI_COMPATIBLE) {
+      const key = this.credentials[p.name] || process.env[p.envVar];
+      if (key || p.name === 'ollama' || p.name === 'lmstudio') {
+        const apiKey = p.tokenGen ? p.tokenGen(key || '') : key || 'none';
+        const baseURL =
+          p.name === 'ollama'
+            ? (process.env.OLLAMA_HOST || 'http://localhost:11434') + '/v1'
+            : p.name === 'lmstudio'
+              ? (process.env.LMSTUDIO_HOST || 'http://localhost:1234') + '/v1'
+              : p.baseURL;
+        this.providers.set(p.name, createOpenAI({ apiKey, baseURL }));
+      }
     }
   }
 
-  /**
-   * Generate Z.AI JWT token
-   */
-  private generateZaiToken(apiKey: string): string {
-    const [id, secret] = apiKey.split('.');
-    if (!id || !secret) return apiKey;
-
-    const now = Date.now();
-    const payload = { api_key: id, exp: now + 210000, timestamp: now };
-    return jwt.sign(payload, secret, {
-      algorithm: 'HS256',
-      header: { alg: 'HS256', sign_type: 'SIGN' } as any,
-    });
-  }
-
-  /**
-   * Get provider for a model
-   */
   private getProviderForModel(model: string): {
     provider: any;
     modelId: string;
@@ -258,73 +396,28 @@ export class UniversalGateway {
   } {
     const lower = model.toLowerCase();
 
-    // OpenAI
-    if (lower.includes('gpt') || lower.includes('o1-') || lower.includes('o3-')) {
-      return { provider: this.providers.get('openai'), modelId: model, providerName: 'openai' };
+    // Check official providers
+    for (const p of PROVIDERS) {
+      if (p.patterns.some((pat) => lower.includes(pat))) {
+        return { provider: this.providers.get(p.name), modelId: model, providerName: p.name };
+      }
     }
 
-    // Anthropic
-    if (lower.includes('claude')) {
-      return {
-        provider: this.providers.get('anthropic'),
-        modelId: model,
-        providerName: 'anthropic',
-      };
+    // Check OpenAI-compatible
+    for (const p of OPENAI_COMPATIBLE) {
+      if (p.patterns.some((pat) => lower.includes(pat))) {
+        // For Z.AI, uppercase the model
+        const id = p.name === 'zai' ? model.toUpperCase() : model;
+        return { provider: this.providers.get(p.name), modelId: id, providerName: p.name };
+      }
     }
 
-    // Google
-    if (lower.includes('gemini')) {
-      return { provider: this.providers.get('google'), modelId: model, providerName: 'google' };
+    // CLI providers - return null provider
+    if (CLI_PROVIDERS.some((c) => lower.includes(c))) {
+      return { provider: null, modelId: model, providerName: 'cli' };
     }
 
-    // Z.AI
-    if (lower.includes('glm') || lower.startsWith('zai')) {
-      return {
-        provider: this.providers.get('zai'),
-        modelId: model.toUpperCase(),
-        providerName: 'zai',
-      };
-    }
-
-    // Mistral
-    if (lower.includes('mistral') || lower.includes('codestral')) {
-      return { provider: this.providers.get('mistral'), modelId: model, providerName: 'mistral' };
-    }
-
-    // Cohere
-    if (lower.includes('command')) {
-      return { provider: this.providers.get('cohere'), modelId: model, providerName: 'cohere' };
-    }
-
-    // xAI (Grok)
-    if (lower.includes('grok')) {
-      return { provider: this.providers.get('xai'), modelId: model, providerName: 'xai' };
-    }
-
-    // Groq
-    if (lower.includes('llama') || lower.includes('mixtral')) {
-      return { provider: this.providers.get('groq'), modelId: model, providerName: 'groq' };
-    }
-
-    // Ollama (local)
-    if (
-      this.providers.has('ollama') &&
-      (lower.includes('llama') || lower.includes('codellama') || lower.includes('deepseek'))
-    ) {
-      return { provider: this.providers.get('ollama'), modelId: model, providerName: 'ollama' };
-    }
-
-    // Cursor (CLI-based - returns null provider, handled by legacy system)
-    if (lower.includes('cursor') || lower.includes('composer')) {
-      return { provider: null, modelId: model, providerName: 'cursor' };
-    }
-
-    // Codex (CLI-based)
-    if (lower.includes('codex')) {
-      return { provider: null, modelId: model, providerName: 'codex' };
-    }
-
-    // OpenRouter fallback
+    // Default fallback: OpenRouter if available, else first provider
     if (this.providers.has('openrouter')) {
       return {
         provider: this.providers.get('openrouter'),
@@ -332,35 +425,19 @@ export class UniversalGateway {
         providerName: 'openrouter',
       };
     }
-
-    // Default to first available
     const first = [...this.providers.entries()][0];
-    if (first) {
-      return { provider: first[1], modelId: model, providerName: first[0] };
-    }
+    if (first) return { provider: first[1], modelId: model, providerName: first[0] };
 
     throw new Error(`No provider available for model: ${model}`);
   }
 
-  /**
-   * Check if a model uses a CLI-based provider (requires legacy ProviderFactory)
-   */
   isCLIProvider(model: string): boolean {
     const lower = model.toLowerCase();
-    return (
-      CLI_PROVIDERS.some((p) => lower.includes(p)) ||
-      lower.includes('cursor') ||
-      lower.includes('composer') ||
-      lower.includes('codex')
-    );
+    return CLI_PROVIDERS.some((c) => lower.includes(c));
   }
 
-  /**
-   * Execute text generation (non-streaming)
-   */
   async generateText(options: UniversalExecuteOptions): Promise<string> {
     if (!this.initialized) await this.init();
-
     const { provider, modelId, providerName } = this.getProviderForModel(options.model || 'gpt-4o');
     if (!provider) throw new Error(`Provider not configured for: ${options.model}`);
 
@@ -379,17 +456,13 @@ export class UniversalGateway {
       logger.info(`[UniversalGateway] [${callId}] END: OK in ${Date.now() - start}ms`);
       return result.text;
     } catch (err) {
-      logger.error(`[UniversalGateway] [${callId}] END: ERROR in ${Date.now() - start}ms`, err);
+      logger.error(`[UniversalGateway] [${callId}] ERROR in ${Date.now() - start}ms`, err);
       throw err;
     }
   }
 
-  /**
-   * Execute streaming text generation
-   */
   async *streamText(options: UniversalExecuteOptions): AsyncGenerator<string> {
     if (!this.initialized) await this.init();
-
     const { provider, modelId, providerName } = this.getProviderForModel(options.model || 'gpt-4o');
     if (!provider) throw new Error(`Provider not configured for: ${options.model}`);
 
@@ -405,10 +478,7 @@ export class UniversalGateway {
         maxTokens: options.maxTokens,
         temperature: options.temperature,
       });
-
-      for await (const chunk of stream.textStream) {
-        yield chunk;
-      }
+      for await (const chunk of stream.textStream) yield chunk;
       logger.info(`[UniversalGateway] [${callId}] DONE in ${Date.now() - start}ms`);
     } catch (err) {
       logger.error(`[UniversalGateway] [${callId}] ERROR in ${Date.now() - start}ms`, err);
@@ -416,22 +486,13 @@ export class UniversalGateway {
     }
   }
 
-  /**
-   * Get available providers
-   */
   getAvailableProviders(): string[] {
     return [...this.providers.keys()];
   }
 
-  /**
-   * Check if a specific provider is available
-   */
   isProviderAvailable(name: string): boolean {
     return this.providers.has(name);
   }
 }
 
-/**
- * Singleton instance
- */
 export const universalGateway = new UniversalGateway();
