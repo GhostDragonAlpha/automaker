@@ -162,11 +162,15 @@ function getUnderlyingModelIcon(model?: AgentModel | string): ProviderIconKey {
   if (modelStr.includes('cursor') || modelStr === 'auto' || modelStr === 'composer-1') {
     return 'cursor';
   }
+  if (modelStr.includes('glm')) {
+    return 'zai';
+  }
 
   // Default based on provider
   const provider = getProviderFromModel(model);
   if (provider === 'codex') return 'openai';
   if (provider === 'cursor') return 'cursor';
+  if (provider === 'zai') return 'zai';
   return 'anthropic';
 }
 

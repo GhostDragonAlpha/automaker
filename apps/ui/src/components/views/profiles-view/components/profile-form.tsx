@@ -181,6 +181,7 @@ export function ProfileForm({
         ...baseProfile,
         codexModel: formData.codexModel,
       });
+    } else if (formData.provider === 'opencode') {
       onSave({
         ...baseProfile,
         opencodeModel: formData.opencodeModel,

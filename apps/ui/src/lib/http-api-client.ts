@@ -1918,13 +1918,14 @@ export class HttpApiClient implements ElectronAPI {
     }> => this.get('/api/settings/credentials'),
 
     updateCredentials: (updates: {
-      apiKeys?: { anthropic?: string; google?: string; openai?: string };
+      apiKeys?: { anthropic?: string; google?: string; openai?: string; zai?: string };
     }): Promise<{
       success: boolean;
       credentials?: {
         anthropic: { configured: boolean; masked: string };
         google: { configured: boolean; masked: string };
         openai: { configured: boolean; masked: string };
+        zai: { configured: boolean; masked: string };
       };
       error?: string;
     }> => this.put('/api/settings/credentials', updates),
@@ -2158,6 +2159,19 @@ export class HttpApiClient implements ElectronAPI {
       count?: number
     ) =>
       this.post('/api/ideation/suggestions/generate', { projectPath, promptId, category, count }),
+
+    // Generate subtasks
+    generateSubtasks: (
+      projectPath: string,
+      parentTask: string,
+      count?: number,
+      context?: {
+        domainContext?: string;
+        focusArea?: string;
+        externalContext?: string;
+        subspecTemplate?: string;
+      }
+    ) => this.post('/api/ideation/tasks/generate', { projectPath, parentTask, count, context }),
 
     convertToFeature: (projectPath: string, ideaId: string, options?: ConvertToFeatureOptions) =>
       this.post('/api/ideation/convert', { projectPath, ideaId, ...options }),

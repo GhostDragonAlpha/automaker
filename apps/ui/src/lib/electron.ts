@@ -114,6 +114,19 @@ export interface IdeationAPI {
     count?: number
   ) => Promise<{ success: boolean; suggestions?: AnalysisSuggestion[]; error?: string }>;
 
+  // Generate subtasks (structure decomposition)
+  generateSubtasks: (
+    projectPath: string,
+    parentTask: string,
+    count?: number,
+    context?: {
+      domainContext?: string;
+      focusArea?: string;
+      externalContext?: string;
+      subspecTemplate?: string;
+    }
+  ) => Promise<{ success: boolean; suggestions?: AnalysisSuggestion[]; error?: string }>;
+
   // Convert to feature
   convertToFeature: (
     projectPath: string,
@@ -758,17 +771,19 @@ export interface ElectronAPI {
         anthropic: { configured: boolean; masked: string };
         google: { configured: boolean; masked: string };
         openai: { configured: boolean; masked: string };
+        zai: { configured: boolean; masked: string };
       };
       error?: string;
     }>;
     updateCredentials: (updates: {
-      apiKeys?: { anthropic?: string; google?: string; openai?: string };
+      apiKeys?: { anthropic?: string; google?: string; openai?: string; zai?: string };
     }) => Promise<{
       success: boolean;
       credentials?: {
         anthropic: { configured: boolean; masked: string };
         google: { configured: boolean; masked: string };
         openai: { configured: boolean; masked: string };
+        zai: { configured: boolean; masked: string };
       };
       error?: string;
     }>;
