@@ -245,6 +245,8 @@ app.use('/api/ideation', createIdeationRoutes(events, ideationService, featureLo
 
 // Create HTTP server
 const server = createServer(app);
+// Set timeout to 24 hours to handle long running agent tasks
+server.setTimeout(24 * 60 * 60 * 1000);
 
 // WebSocket servers using noServer mode for proper multi-path support
 const wss = new WebSocketServer({ noServer: true });
