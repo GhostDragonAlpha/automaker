@@ -15,7 +15,7 @@ import {
 } from '@automaker/types';
 import { resolvePhaseModel } from '@automaker/model-resolver';
 import { FeatureLoader } from '../../services/feature-loader.js';
-import { ProviderFactory } from '../../providers/provider-factory.js';
+import { aiGateway } from '../../services/ai-gateway.js';
 import { extractJsonWithArray } from '../../lib/json-extractor.js';
 import { logger, setRunningState, getErrorMessage } from './common.js';
 import type { SettingsService } from '../../services/settings-service.js';
@@ -124,47 +124,15 @@ export async function generateBacklogPlan(
     }
     logger.info('[BacklogPlan] Using model:', effectiveModel);
 
-    const provider = ProviderFactory.getProviderForModel(effectiveModel);
-    // Strip provider prefix - providers expect bare model IDs
-    const bareModel = stripProviderPrefix(effectiveModel);
-
-    // Get autoLoadClaudeMd setting
-    const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
-      projectPath,
-      settingsService,
-      '[BacklogPlan]'
-    );
-
-    // For Cursor models, we need to combine prompts with explicit instructions
-    // because Cursor doesn't support systemPrompt separation like Claude SDK
-    let finalPrompt = userPrompt;
-    let finalSystemPrompt: string | undefined = systemPrompt;
-
-    if (isCursorModel(effectiveModel)) {
-      logger.info('[BacklogPlan] Using Cursor model - adding explicit no-file-write instructions');
-      finalPrompt = `${systemPrompt}
-
-CRITICAL INSTRUCTIONS:
-1. DO NOT write any files. Return the JSON in your response only.
-2. DO NOT use Write, Edit, or any file modification tools.
-3. Respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
-4. Your entire response should be valid JSON starting with { and ending with }.
-5. No text before or after the JSON object.
-
-${userPrompt}`;
-      finalSystemPrompt = undefined; // System prompt is now embedded in the user prompt
-    }
-
-    // Execute the query
-    const stream = provider.executeQuery({
-      prompt: finalPrompt,
-      model: bareModel,
+    // Use AIGateway for parallel-safe, provider-agnostic execution
+    const stream = aiGateway.execute({
+      prompt: userPrompt,
+      model: effectiveModel,
       cwd: projectPath,
-      systemPrompt: finalSystemPrompt,
+      systemPrompt,
       maxTurns: 1,
       allowedTools: [], // No tools needed for this
       abortController,
-      settingSources: autoLoadClaudeMd ? ['user', 'project'] : undefined,
       readOnly: true, // Plan generation only generates text, doesn't write files
       thinkingLevel, // Pass thinking level for extended thinking
     });

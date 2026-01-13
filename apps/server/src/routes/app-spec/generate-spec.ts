@@ -5,7 +5,7 @@
  * (defaults to Opus for high-quality specification generation).
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { executeQuery } from '../../lib/execute-query.js';
 import path from 'path';
 import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
@@ -18,10 +18,8 @@ import {
 import { createLogger } from '@automaker/utils';
 import { DEFAULT_PHASE_MODELS, isCursorModel, stripProviderPrefix } from '@automaker/types';
 import { resolvePhaseModel } from '@automaker/model-resolver';
-import { createSpecGenerationOptions } from '../../lib/sdk-options.js';
 import { extractJson } from '../../lib/json-extractor.js';
-import { ProviderFactory } from '../../providers/provider-factory.js';
-import { logAuthStatus } from './common.js';
+import { aiGateway } from '../../services/ai-gateway.js';
 import { generateFeaturesFromSpec } from './generate-features-from-spec.js';
 import { ensureAutomakerDir, getAppSpecPath } from '@automaker/platform';
 import type { SettingsService } from '../../services/settings-service.js';
@@ -117,10 +115,6 @@ ${getStructuredSpecPromptInstruction()}`;
     // Use Cursor provider for Cursor models
     logger.info('[SpecGeneration] Using Cursor provider');
 
-    const provider = ProviderFactory.getProviderForModel(model);
-    // Strip provider prefix - providers expect bare model IDs
-    const bareModel = stripProviderPrefix(model);
-
     // For Cursor, include the JSON schema in the prompt with clear instructions
     // to return JSON in the response (not write to a file)
     const cursorPrompt = `${prompt}
@@ -134,9 +128,10 @@ ${JSON.stringify(specOutputSchema, null, 2)}
 
 Your entire response should be valid JSON starting with { and ending with }. No text before or after.`;
 
-    for await (const msg of provider.executeQuery({
+    // Use AIGateway for parallel-safe, provider-agnostic execution
+    for await (const msg of aiGateway.execute({
       prompt: cursorPrompt,
-      model: bareModel,
+      model,
       cwd: projectPath,
       maxTurns: 250,
       allowedTools: ['Read', 'Glob', 'Grep'],
@@ -179,41 +174,30 @@ Your entire response should be valid JSON starting with { and ending with }. No 
       structuredOutput = extractJson<SpecOutput>(responseText, { logger });
     }
   } else {
-    // Use Claude SDK for Claude models
-    logger.info('[SpecGeneration] Using Claude SDK');
+    // Use default provider via executeQuery (provider-agnostic)
+    logger.info('[SpecGeneration] Using executeQuery for model:', model);
 
-    const options = createSpecGenerationOptions({
-      cwd: projectPath,
-      abortController,
-      autoLoadClaudeMd,
-      model,
-      thinkingLevel, // Pass thinking level for extended thinking
-      outputFormat: {
-        type: 'json_schema',
-        schema: specOutputSchema,
-      },
-    });
+    // Add JSON schema instruction to the prompt for structured output
+    const structuredPrompt = `${prompt}
 
-    logger.debug('SDK Options:', JSON.stringify(options, null, 2));
-    logger.info('Calling Claude Agent SDK query()...');
+IMPORTANT: Your response MUST be a valid JSON object matching this schema:
+${JSON.stringify(specOutputSchema, null, 2)}
 
-    // Log auth status right before the SDK call
-    logAuthStatus('Right before SDK query()');
+After analyzing the project, respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
+Your entire response should be valid JSON starting with { and ending with }.`;
 
-    let stream;
-    try {
-      stream = query({ prompt, options });
-      logger.debug('query() returned stream successfully');
-    } catch (queryError) {
-      logger.error('❌ query() threw an exception:');
-      logger.error('Error:', queryError);
-      throw queryError;
-    }
-
-    logger.info('Starting to iterate over stream...');
+    logger.info('Calling executeQuery()...');
 
     try {
-      for await (const msg of stream) {
+      for await (const msg of executeQuery({
+        prompt: structuredPrompt,
+        model,
+        cwd: projectPath,
+        maxTurns: 250,
+        allowedTools: ['Read', 'Glob', 'Grep'],
+        abortController,
+        readOnly: true, // Spec generation only reads code
+      })) {
         messageCount++;
         logger.info(
           `Stream message #${messageCount}: type=${msg.type}, subtype=${(msg as any).subtype}`
@@ -245,30 +229,25 @@ Your entire response should be valid JSON starting with { and ending with }. No 
           }
         } else if (msg.type === 'result' && (msg as any).subtype === 'success') {
           logger.info('Received success result');
-          // Check for structured output - this is the reliable way to get spec data
+          // Try to extract structured output from result
           const resultMsg = msg as any;
-          if (resultMsg.structured_output) {
-            structuredOutput = resultMsg.structured_output as SpecOutput;
-            logger.info('✅ Received structured output');
-            logger.debug('Structured output:', JSON.stringify(structuredOutput, null, 2));
-          } else {
-            logger.warn('⚠️ No structured output in result, will fall back to text parsing');
+          if (resultMsg.result && typeof resultMsg.result === 'string') {
+            // Parse JSON from result text
+            structuredOutput = extractJson<SpecOutput>(resultMsg.result, { logger });
+            if (structuredOutput) {
+              logger.info('✅ Extracted structured output from result');
+            }
           }
         } else if (msg.type === 'result') {
-          // Handle error result types
           const subtype = (msg as any).subtype;
           logger.info(`Result message: subtype=${subtype}`);
           if (subtype === 'error_max_turns') {
             logger.error('❌ Hit max turns limit!');
-          } else if (subtype === 'error_max_structured_output_retries') {
-            logger.error('❌ Failed to produce valid structured output after retries');
-            throw new Error('Could not produce valid spec output');
           }
         } else if ((msg as { type: string }).type === 'error') {
           logger.error('❌ Received error message from stream:');
           logger.error('Error message:', JSON.stringify(msg, null, 2));
         } else if (msg.type === 'user') {
-          // Log user messages (tool results)
           logger.info(`User message (tool result): ${JSON.stringify(msg).substring(0, 500)}`);
         }
       }
@@ -276,6 +255,11 @@ Your entire response should be valid JSON starting with { and ending with }. No 
       logger.error('❌ Error while iterating stream:');
       logger.error('Stream error:', streamError);
       throw streamError;
+    }
+
+    // Parse JSON from accumulated response text if not already parsed
+    if (!structuredOutput && responseText) {
+      structuredOutput = extractJson<SpecOutput>(responseText, { logger });
     }
   }
 

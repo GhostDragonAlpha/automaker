@@ -5,15 +5,13 @@
  * (defaults to Sonnet for balanced speed and quality).
  */
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { executeQuery } from '../../lib/execute-query.js';
 import * as secureFs from '../../lib/secure-fs.js';
 import type { EventEmitter } from '../../lib/events.js';
 import { createLogger } from '@automaker/utils';
 import { DEFAULT_PHASE_MODELS, isCursorModel, stripProviderPrefix } from '@automaker/types';
 import { resolvePhaseModel } from '@automaker/model-resolver';
-import { createFeatureGenerationOptions } from '../../lib/sdk-options.js';
-import { ProviderFactory } from '../../providers/provider-factory.js';
-import { logAuthStatus } from './common.js';
+import { aiGateway } from '../../services/ai-gateway.js';
 import { parseAndCreateFeatures } from './parse-and-create-features.js';
 import { getAppSpecPath } from '@automaker/platform';
 import type { SettingsService } from '../../services/settings-service.js';
@@ -123,10 +121,6 @@ IMPORTANT: Do not ask for clarification. The specification is provided above. Ge
     // Use Cursor provider for Cursor models
     logger.info('[FeatureGeneration] Using Cursor provider');
 
-    const provider = ProviderFactory.getProviderForModel(model);
-    // Strip provider prefix - providers expect bare model IDs
-    const bareModel = stripProviderPrefix(model);
-
     // Add explicit instructions for Cursor to return JSON in response
     const cursorPrompt = `${prompt}
 
@@ -135,9 +129,10 @@ CRITICAL INSTRUCTIONS:
 2. Respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
 3. Your entire response should be valid JSON starting with { and ending with }. No text before or after.`;
 
-    for await (const msg of provider.executeQuery({
+    // Use AIGateway for parallel-safe, provider-agnostic execution
+    for await (const msg of aiGateway.execute({
       prompt: cursorPrompt,
-      model: bareModel,
+      model,
       cwd: projectPath,
       maxTurns: 250,
       allowedTools: ['Read', 'Glob', 'Grep'],
@@ -166,45 +161,38 @@ CRITICAL INSTRUCTIONS:
       }
     }
   } else {
-    // Use Claude SDK for Claude models
-    logger.info('[FeatureGeneration] Using Claude SDK');
+    // Use default provider via executeQuery (provider-agnostic)
+    logger.info('[FeatureGeneration] Using executeQuery for model:', model);
 
-    const options = createFeatureGenerationOptions({
-      cwd: projectPath,
-      abortController,
-      autoLoadClaudeMd,
-      model,
-      thinkingLevel, // Pass thinking level for extended thinking
-    });
+    // Add explicit JSON response instructions to the prompt
+    const structuredPrompt = `${prompt}
 
-    logger.debug('SDK Options:', JSON.stringify(options, null, 2));
-    logger.info('Calling Claude Agent SDK query() for features...');
+CRITICAL INSTRUCTIONS:
+1. DO NOT write any files. Return the JSON in your response only.
+2. Respond with ONLY a JSON object - no explanations, no markdown, just raw JSON.
+3. Your entire response should be valid JSON starting with { and ending with }. No text before or after.`;
 
-    logAuthStatus('Right before SDK query() for features');
-
-    let stream;
-    try {
-      stream = query({ prompt, options });
-      logger.debug('query() returned stream successfully');
-    } catch (queryError) {
-      logger.error('❌ query() threw an exception:');
-      logger.error('Error:', queryError);
-      throw queryError;
-    }
-
-    logger.debug('Starting to iterate over feature stream...');
+    logger.info('Calling executeQuery() for features...');
 
     try {
-      for await (const msg of stream) {
+      for await (const msg of executeQuery({
+        prompt: structuredPrompt,
+        model,
+        cwd: projectPath,
+        maxTurns: 250,
+        allowedTools: ['Read', 'Glob', 'Grep'],
+        abortController,
+        readOnly: true,
+      })) {
         messageCount++;
         logger.debug(
           `Feature stream message #${messageCount}:`,
           JSON.stringify({ type: msg.type, subtype: (msg as any).subtype }, null, 2)
         );
 
-        if (msg.type === 'assistant' && msg.message.content) {
+        if (msg.type === 'assistant' && msg.message?.content) {
           for (const block of msg.message.content) {
-            if (block.type === 'text') {
+            if (block.type === 'text' && block.text) {
               responseText += block.text;
               logger.debug(`Feature text block received (${block.text.length} chars)`);
               events.emit('spec-regeneration:event', {

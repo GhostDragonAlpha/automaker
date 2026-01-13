@@ -1178,7 +1178,7 @@ const initialState: AppState = {
   chatHistoryOpen: false,
   autoModeByProject: {},
   autoModeActivityLog: [],
-  maxConcurrency: 3, // Default to 3 concurrent agents
+  maxConcurrency: 24, // Performance Workstation: Match 24-Core CPU
   kanbanCardDetailLevel: 'standard', // Default to standard detail level
   boardViewMode: 'kanban', // Default to kanban view
   defaultSkipTests: true, // Default to manual verification (tests disabled)
@@ -1541,8 +1541,22 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   setFeatures: (features) => set({ features }),
 
   updateFeature: (id, updates) => {
-    set({
-      features: get().features.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+    set((state) => {
+      const featureIndex = state.features.findIndex((f) => f.id === id);
+      if (featureIndex === -1) return {};
+
+      const currentFeature = state.features[featureIndex];
+      const updatedFeature = { ...currentFeature, ...updates };
+
+      // MEMORY PROTECTION: Cap logs at 10,000 lines to prevent OOM in long sessions
+      if (updatedFeature.steps && updatedFeature.steps.length > 10000) {
+        updatedFeature.steps = updatedFeature.steps.slice(-10000);
+      }
+
+      const newFeatures = [...state.features];
+      newFeatures[featureIndex] = updatedFeature;
+
+      return { features: newFeatures };
     });
   },
 

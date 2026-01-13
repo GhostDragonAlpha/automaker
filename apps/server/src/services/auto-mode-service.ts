@@ -10,6 +10,7 @@
  */
 
 import { ProviderFactory } from '../providers/provider-factory.js';
+import { aiGateway } from './ai-gateway.js';
 import type {
   ExecuteOptions,
   Feature,
@@ -29,7 +30,7 @@ import {
 } from '@automaker/utils';
 
 const logger = createLogger('AutoMode');
-import { resolveModelString, resolvePhaseModel, DEFAULT_MODELS } from '@automaker/model-resolver';
+import { resolveModelString, resolvePhaseModel } from '@automaker/model-resolver';
 import { resolveDependencies, areDependenciesSatisfied } from '@automaker/dependency-resolver';
 import { getFeatureDir, getAutomakerDir, getFeaturesDir } from '@automaker/platform';
 import { exec } from 'child_process';
@@ -558,7 +559,7 @@ export class AutoModeService {
       );
 
       // Get model from feature and determine provider
-      let model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+      let model = resolveModelString(feature.model, 'default');
 
       // Handle "default" model selection by looking up settings
       if (model === 'default') {
@@ -796,7 +797,7 @@ export class AutoModeService {
       const prompt = this.buildPipelineStepPrompt(step, feature, previousContext);
 
       // Get model from feature
-      const model = resolveModelString(feature.model, DEFAULT_MODELS.claude);
+      const model = resolveModelString(feature.model, 'default');
 
       // Run the agent for this pipeline step
       await this.runAgent(
@@ -1022,7 +1023,7 @@ ${prompt}
 Address the follow-up instructions above. Review the previous work and make the requested changes or fixes.`;
 
     // Get model from feature and determine provider early for tracking
-    const model = resolveModelString(feature?.model, DEFAULT_MODELS.claude);
+    const model = resolveModelString(feature?.model, 'default');
     const provider = ProviderFactory.getProviderNameForModel(model);
     logger.info(`Follow-up for feature ${featureId} using model: ${model}, provider: ${provider}`);
 
@@ -1393,8 +1394,6 @@ Format your response as a structured markdown document.`;
       }
       logger.info('Using model for project analysis:', analysisModel);
 
-      const provider = ProviderFactory.getProviderForModel(analysisModel);
-
       // Load autoLoadClaudeMd setting
       const autoLoadClaudeMd = await getAutoLoadClaudeMdSetting(
         projectPath,
@@ -1413,18 +1412,16 @@ Format your response as a structured markdown document.`;
         thinkingLevel: analysisThinkingLevel,
       });
 
-      const options: ExecuteOptions = {
+      // Use AIGateway for parallel-safe, provider-agnostic execution
+      const stream = aiGateway.execute({
         prompt,
-        model: sdkOptions.model ?? analysisModel,
-        cwd: sdkOptions.cwd ?? projectPath,
+        model: analysisModel,
+        cwd: projectPath,
         maxTurns: sdkOptions.maxTurns,
         allowedTools: sdkOptions.allowedTools as string[],
         abortController,
-        settingSources: sdkOptions.settingSources,
-        thinkingLevel: analysisThinkingLevel, // Pass thinking level
-      };
-
-      const stream = provider.executeQuery(options);
+        thinkingLevel: analysisThinkingLevel,
+      });
       let analysisResult = '';
 
       for await (const msg of stream) {
@@ -2208,16 +2205,6 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
       `runAgent called for feature ${featureId} with model: ${finalModel}, planningMode: ${planningMode}, requiresApproval: ${requiresApproval}`
     );
 
-    // Get provider for this model
-    const provider = ProviderFactory.getProviderForModel(finalModel);
-
-    // Strip provider prefix - providers should receive bare model IDs
-    const bareModel = stripProviderPrefix(finalModel);
-
-    logger.info(
-      `Using provider "${provider.getName()}" for model "${finalModel}" (bare: ${bareModel})`
-    );
-
     // Build prompt content with images using utility
     const { content: promptContent } = await buildPromptWithImages(
       prompt,
@@ -2233,22 +2220,19 @@ This mock response was generated because AUTOMAKER_MOCK_AGENT=true was set.
       );
     }
 
-    const executeOptions: ExecuteOptions = {
+    // Execute via AIGateway for parallel-safe, provider-agnostic execution
+    logger.info(`Starting stream for feature ${featureId}...`);
+    const stream = aiGateway.execute({
       prompt: promptContent,
-      model: bareModel,
-      maxTurns: maxTurns,
+      model: finalModel,
+      maxTurns,
       cwd: workDir,
-      allowedTools: allowedTools,
+      allowedTools,
       abortController,
       systemPrompt: sdkOptions.systemPrompt,
-      settingSources: sdkOptions.settingSources,
-      mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined, // Pass MCP servers configuration
-      thinkingLevel: options?.thinkingLevel, // Pass thinking level for extended thinking
-    };
-
-    // Execute via provider
-    logger.info(`Starting stream for feature ${featureId}...`);
-    const stream = provider.executeQuery(executeOptions);
+      mcpServers: Object.keys(mcpServers).length > 0 ? mcpServers : undefined,
+      thinkingLevel: options?.thinkingLevel,
+    });
     logger.info(`Stream created, starting to iterate...`);
     // Initialize with previous content if this is a follow-up, with a separator
     let responseText = previousContent
@@ -3064,8 +3048,8 @@ IMPORTANT: Only include NON-OBVIOUS learnings with real reasoning. Skip trivial 
 If nothing notable: {"learnings": []}`;
 
     try {
-      // Import query dynamically to avoid circular dependencies
-      const { query } = await import('@anthropic-ai/claude-agent-sdk');
+      // Import executeQuery dynamically to avoid circular dependencies
+      const { executeQuery } = await import('../lib/execute-query.js');
 
       // Get model from phase settings
       const settings = await this.settingsService?.getGlobalSettings();
@@ -3073,21 +3057,16 @@ If nothing notable: {"learnings": []}`;
         settings?.phaseModels?.memoryExtractionModel || DEFAULT_PHASE_MODELS.memoryExtractionModel;
       const { model } = resolvePhaseModel(phaseModelEntry);
 
-      const stream = query({
-        prompt: userPrompt,
-        options: {
-          model,
-          maxTurns: 1,
-          allowedTools: [],
-          permissionMode: 'acceptEdits',
-          systemPrompt:
-            'You are a JSON extraction assistant. You MUST respond with ONLY valid JSON, no explanations, no markdown, no other text. Extract learnings from the provided implementation context and return them as JSON.',
-        },
-      });
-
-      // Extract text from stream
+      // Execute query through provider-agnostic routing
       let responseText = '';
-      for await (const msg of stream) {
+      for await (const msg of executeQuery({
+        prompt: userPrompt,
+        model,
+        maxTurns: 1,
+        allowedTools: [],
+        systemPrompt:
+          'You are a JSON extraction assistant. You MUST respond with ONLY valid JSON, no explanations, no markdown, no other text. Extract learnings from the provided implementation context and return them as JSON.',
+      })) {
         if (msg.type === 'assistant' && msg.message?.content) {
           for (const block of msg.message.content) {
             if (block.type === 'text' && block.text) {
@@ -3095,7 +3074,7 @@ If nothing notable: {"learnings": []}`;
             }
           }
         } else if (msg.type === 'result' && msg.subtype === 'success') {
-          responseText = msg.result || responseText;
+          responseText = (msg as any).result || responseText;
         }
       }
 

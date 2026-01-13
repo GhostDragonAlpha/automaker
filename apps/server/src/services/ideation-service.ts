@@ -36,9 +36,14 @@ import {
 } from '@automaker/platform';
 import { createLogger, loadContextFiles, isAbortError } from '@automaker/utils';
 import { ProviderFactory } from '../providers/provider-factory.js';
+import { aiGateway } from './ai-gateway.js';
 import type { SettingsService } from './settings-service.js';
 import type { FeatureLoader } from './feature-loader.js';
-import { createChatOptions, validateWorkingDirectory } from '../lib/sdk-options.js';
+import {
+  createChatOptions,
+  createSuggestionsOptions,
+  validateWorkingDirectory,
+} from '../lib/sdk-options.js';
 import { resolveModelString } from '@automaker/model-resolver';
 import { stripProviderPrefix } from '@automaker/types';
 
@@ -213,23 +218,16 @@ export class IdeationService {
         abortController: activeSession.abortController!,
       });
 
-      const provider = ProviderFactory.getProviderForModel(modelId);
-
-      // Strip provider prefix - providers need bare model IDs
-      const bareModel = stripProviderPrefix(modelId);
-
-      const executeOptions: ExecuteOptions = {
+      // Use AIGateway for parallel-safe, provider-agnostic execution
+      const stream = aiGateway.execute({
         prompt: message,
-        model: bareModel,
-        originalModel: modelId,
+        model: modelId,
         cwd: projectPath,
         systemPrompt: sdkOptions.systemPrompt,
         maxTurns: 1, // Single turn for ideation
         abortController: activeSession.abortController!,
         conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
-      };
-
-      const stream = provider.executeQuery(executeOptions);
+      });
 
       let responseText = '';
       const assistantMessage: IdeationMessage = {
@@ -664,24 +662,17 @@ export class IdeationService {
         abortController: new AbortController(),
       });
 
-      const provider = ProviderFactory.getProviderForModel(modelId);
-
-      // Strip provider prefix - providers need bare model IDs
-      const bareModel = stripProviderPrefix(modelId);
-
-      const executeOptions: ExecuteOptions = {
+      // Use AIGateway for parallel-safe, provider-agnostic execution
+      const stream = aiGateway.execute({
         prompt: prompt.prompt,
-        model: bareModel,
-        originalModel: modelId,
+        model: modelId,
         cwd: projectPath,
         systemPrompt: sdkOptions.systemPrompt,
         maxTurns: 1,
         // Disable all tools - we just want text generation, not codebase analysis
         allowedTools: [],
         abortController: new AbortController(),
-      };
-
-      const stream = provider.executeQuery(executeOptions);
+      });
 
       let responseText = '';
       for await (const msg of stream) {
@@ -713,6 +704,124 @@ export class IdeationService {
       this.events.emit('ideation:suggestions', {
         type: 'error',
         promptId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate structured subtasks from a parent task description
+   * Used for "Smart Expand" feature
+   */
+  async generateSubtasks(
+    projectPath: string,
+    parentTask: string,
+    count: number = 5,
+    context?: {
+      domainContext?: string;
+      focusArea?: string;
+      externalContext?: string;
+      subspecTemplate?: string;
+    }
+  ): Promise<AnalysisSuggestion[]> {
+    validateWorkingDirectory(projectPath);
+
+    // Emit start event
+    this.events.emit('ideation:subtasks', {
+      type: 'started',
+      parentTask: parentTask.substring(0, 50) + '...',
+    });
+
+    try {
+      // Load project context files if available
+      const contextResult = await loadContextFiles({
+        projectPath,
+        fsModule: secureFs as Parameters<typeof loadContextFiles>[0]['fsModule'],
+      });
+
+      // Build context from multiple sources
+      let projectContextPrompt = contextResult.formattedPrompt;
+
+      // If no context files, try to gather basic project info
+      if (!projectContextPrompt) {
+        const projectInfo = await this.gatherBasicProjectInfo(projectPath);
+        if (projectInfo) {
+          projectContextPrompt = projectInfo;
+        }
+      }
+
+      // Build system prompt for subtask generation
+      const systemPrompt = this.buildSubtasksSystemPrompt(
+        projectContextPrompt,
+        parentTask,
+        count,
+        context
+      );
+
+      // Resolve model alias
+      const modelId = resolveModelString('default'); // Use default model
+
+      // Create SDK options using Suggestions preset (designed for ideation/analysis)
+      const sdkOptions = createSuggestionsOptions({
+        cwd: projectPath,
+        model: modelId,
+        systemPrompt,
+        abortController: new AbortController(),
+      });
+
+      // Use AIGateway for parallel-safe, provider-agnostic execution
+      const stream = aiGateway.execute({
+        prompt: `Decompose this task: "${parentTask}"`,
+        model: modelId,
+        cwd: projectPath,
+        systemPrompt: sdkOptions.systemPrompt as string,
+        maxTurns: 1,
+        allowedTools: [],
+        abortController: new AbortController(),
+      });
+
+      let responseText = '';
+      for await (const msg of stream) {
+        logger.debug(
+          `[generateSubtasks] Stream message type: ${msg.type}, subtype: ${msg.subtype || 'none'}`
+        );
+        if (msg.type === 'assistant' && msg.message?.content) {
+          for (const block of msg.message.content) {
+            if (block.type === 'text') {
+              responseText += block.text;
+            }
+          }
+        } else if (msg.type === 'result' && msg.subtype === 'success' && msg.result) {
+          responseText = msg.result;
+        }
+      }
+
+      // Debug: Log the raw response before parsing
+      logger.info(
+        `[generateSubtasks] Raw LLM response (length=${responseText.length}): ${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`
+      );
+
+      // Parse the response using the existing JSON parser
+      // We perform a light mapping to ensure fields match what frontend expects
+      // Note: We reuse 'AnalysisSuggestion' type as it fits perfectly (title, description, rationale, priority)
+      const suggestions = this.parseSuggestionsFromResponse(
+        responseText,
+        'features' as IdeaCategory
+      );
+
+      // Emit complete event
+      this.events.emit('ideation:subtasks', {
+        type: 'complete',
+        count: suggestions.length,
+        suggestions,
+      });
+
+      return suggestions;
+    } catch (error) {
+      logger.error('Failed to generate subtasks:', error);
+      this.events.emit('ideation:subtasks', {
+        type: 'error',
         error: (error as Error).message,
       });
       throw error;
@@ -767,6 +876,64 @@ ${contextSection}${existingWorkSection}`;
   }
 
   /**
+   * Build system prompt for subtask decomposition
+   */
+  private buildSubtasksSystemPrompt(
+    projectContext: string | undefined,
+    parentTask: string,
+    count: number,
+    context?: {
+      domainContext?: string;
+      focusArea?: string;
+      externalContext?: string;
+      subspecTemplate?: string;
+    }
+  ): string {
+    const projectSection = projectContext
+      ? `## Project Context\n${projectContext}`
+      : `## No specific project context available. Assume standard software engineering practices.`;
+
+    const domainContextLine = context?.domainContext ? `Domain: ${context.domainContext}` : '';
+    const focusAreaLine = context?.focusArea ? `Focus Area: ${context.focusArea}` : '';
+    const externalContextSection = context?.externalContext
+      ? `\n## Source Material / Context\n${context.externalContext}`
+      : '';
+    const subspecSection = context?.subspecTemplate
+      ? `\n## Constraints & Contract (Subspec)\nAll generated tasks MUST adhere to this contract:\n${context.subspecTemplate}`
+      : '';
+
+    return `You are a Senior Technical Architect responsible for breaking down complex features into actionable subtasks.
+You are decomposing the following parent task: "${parentTask}"
+
+${domainContextLine}
+${focusAreaLine}
+
+IMPORTANT: You do NOT have access to any tools. You CANNOT read files, search code, or run commands.
+You must generate subtasks based ONLY on the context provided.
+
+Based on the goal, context, and constraints, generate exactly ${count} subtasks that form a complete implementation plan.
+
+YOUR RESPONSE MUST BE ONLY A JSON ARRAY - nothing else. No explanation, no preamble, no markdown code fences.
+
+Each subtask must have this structure:
+{
+  "title": "Actionable title (Start with Verb)",
+  "description": "Technical description of the work. Mention specific files or components if context allows.",
+  "rationale": "Why this step is necessary for the parent task",
+  "priority": "high" | "medium" | "low"
+}
+
+Guidelines:
+- Generate exactly ${count} subtasks (unless the task is very simple, then fewer is fine)
+- Tasks should be atomic (assignable to a single dev)
+- Order them logically (Dependencies first)
+- If the Subspec Contract is provided, ensure every task strictly follows its rules
+- Avoid generic filler tasks like "Research" unless explicitly needed
+
+${projectSection}${externalContextSection}${subspecSection}`;
+  }
+
+  /**
    * Parse AI response into structured suggestions
    */
   private parseSuggestionsFromResponse(
@@ -774,8 +941,17 @@ ${contextSection}${existingWorkSection}`;
     category: IdeaCategory
   ): AnalysisSuggestion[] {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = response.match(/\[[\s\S]*\]/);
+      // Preprocess: Remove thinking tokens (e.g., *Thinking: ...*) that some models emit
+      let cleanedResponse = response.replace(/\*Thinking:[^*]*\*/gi, '');
+
+      // Preprocess: Remove markdown code fences
+      cleanedResponse = cleanedResponse
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/gi, '')
+        .trim();
+
+      // Try to extract JSON from the cleaned response
+      const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
         logger.warn('No JSON array found in response, falling back to text parsing');
         return this.parseTextResponse(response, category);
@@ -792,13 +968,29 @@ ${contextSection}${existingWorkSection}`;
         title: item.title || `Suggestion ${index + 1}`,
         description: item.description || '',
         rationale: item.rationale || '',
-        priority: item.priority || 'medium',
+        priority: this.normalizePriority(item.priority),
         relatedFiles: item.relatedFiles || [],
       }));
     } catch (error) {
       logger.warn('Failed to parse JSON response:', error);
       return this.parseTextResponse(response, category);
     }
+  }
+
+  /**
+   * Normalize priority value to numeric (1=high, 2=medium, 3=low)
+   */
+  private normalizePriority(priority: any): number {
+    if (typeof priority === 'number') {
+      return Math.max(1, Math.min(3, priority));
+    }
+    if (typeof priority === 'string') {
+      const lower = priority.toLowerCase();
+      if (lower === 'high') return 1;
+      if (lower === 'medium') return 2;
+      if (lower === 'low') return 3;
+    }
+    return 3; // Default to low
   }
 
   /**
