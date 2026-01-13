@@ -40,6 +40,7 @@ interface KanbanBoardProps {
   onViewPlan: (feature: Feature) => void;
   onApprovePlan: (feature: Feature) => void;
   onSpawnTask?: (feature: Feature) => void;
+  onSmartExpand?: (feature: Feature) => void;
   featuresWithContext: Set<string>;
   runningAutoTasks: string[];
   onArchiveAllVerified: () => void;
@@ -74,7 +75,9 @@ export function KanbanBoard({
   onImplement,
   onViewPlan,
   onApprovePlan,
+
   onSpawnTask,
+  onSmartExpand,
   featuresWithContext,
   runningAutoTasks,
   onArchiveAllVerified,
@@ -200,6 +203,7 @@ export function KanbanBoard({
                         onViewPlan={() => onViewPlan(feature)}
                         onApprovePlan={() => onApprovePlan(feature)}
                         onSpawnTask={() => onSpawnTask?.(feature)}
+                        onSmartExpand={() => onSmartExpand?.(feature)}
                         hasContext={featuresWithContext.has(feature.id)}
                         isCurrentAutoTask={runningAutoTasks.includes(feature.id)}
                         shortcutKey={shortcutKey}
@@ -244,6 +248,7 @@ export function KanbanBoard({
                 onViewPlan={() => {}}
                 onApprovePlan={() => {}}
                 onSpawnTask={() => {}}
+                onSmartExpand={() => {}}
                 hasContext={featuresWithContext.has(activeFeature.id)}
                 isCurrentAutoTask={runningAutoTasks.includes(activeFeature.id)}
                 opacity={backgroundSettings.cardOpacity}

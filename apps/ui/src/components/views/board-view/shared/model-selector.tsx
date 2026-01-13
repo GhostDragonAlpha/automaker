@@ -57,13 +57,14 @@ export function ModelSelector({
       // Switch to Claude's default model
       onModelSelect('sonnet');
     } else if (provider === 'zai' && selectedProvider !== 'zai') {
-      // Switch to Z.AI's default model
-      onModelSelect('glm-4.5-flash');
+      // Switch to Z.AI's default model (use exact casing from ZAI_MODELS)
+      onModelSelect('GLM-4.5-Flash');
     }
   };
 
-  // Determine if Z.AI is selected (check if model is a GLM model)
-  const isZaiSelected = selectedModel.startsWith('glm-');
+  // Determine if Z.AI is selected (check if model is a GLM model - case-insensitive)
+  const isZaiSelected =
+    selectedModel.toLowerCase().startsWith('glm-') || selectedModel.toLowerCase().startsWith('glm');
 
   return (
     <div className="space-y-4">

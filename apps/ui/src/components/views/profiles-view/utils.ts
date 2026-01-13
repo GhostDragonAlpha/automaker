@@ -3,7 +3,7 @@ import { CURSOR_MODEL_MAP } from '@automaker/types';
 
 // Helper to determine provider from model (legacy, always returns 'claude')
 export function getProviderFromModel(model: ModelAlias): ModelProvider {
-  return 'claude';
+  return 'zai';
 }
 
 /**

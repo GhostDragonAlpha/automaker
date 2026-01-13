@@ -194,8 +194,8 @@ export function getModelForUseCase(
     auto: 'default', // used to implement kanban cards
     default: 'default',
   };
-
-  return resolveModelString(defaultModels[useCase] || DEFAULT_MODELS.claude);
+  // Use 'default' - model resolver will map to configured default model
+  return resolveModelString(defaultModels[useCase] || 'default');
 }
 
 /**

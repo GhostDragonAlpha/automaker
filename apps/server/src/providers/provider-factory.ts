@@ -93,8 +93,8 @@ export class ProviderFactory {
       }
     }
 
-    // Default to claude (first registered provider or claude)
-    return 'claude';
+    // Default to zai (matches DEFAULT_MODELS.claude = 'glm-4.7')
+    return 'zai';
   }
 
   /**
@@ -124,12 +124,9 @@ export class ProviderFactory {
     const provider = this.getProviderByName(providerName);
 
     if (!provider) {
-      // Fallback to claude if provider not found
-      const claudeReg = providerRegistry.get('claude');
-      if (claudeReg) {
-        return claudeReg.factory();
-      }
-      throw new Error(`No provider found for model: ${modelId}`);
+      // No fallback - throw error if provider not found
+      // Default model is configured in DEFAULT_MODELS (libs/types/src/model.ts)
+      throw new Error(`No provider found for model: ${modelId}. Check your model configuration.`);
     }
 
     return provider;
@@ -160,8 +157,8 @@ export class ProviderFactory {
       }
     }
 
-    // Default to claude (first registered provider or claude)
-    return 'claude';
+    // Default to zai (matches DEFAULT_MODELS.claude = 'glm-4.7')
+    return 'zai';
   }
 
   /**

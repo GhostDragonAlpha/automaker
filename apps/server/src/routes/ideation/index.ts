@@ -23,6 +23,7 @@ import { createConvertHandler } from './routes/convert.js';
 import { createAddSuggestionHandler } from './routes/add-suggestion.js';
 import { createPromptsHandler, createPromptsByCategoryHandler } from './routes/prompts.js';
 import { createSuggestionsGenerateHandler } from './routes/suggestions-generate.js';
+import { createTasksGenerateHandler } from './routes/tasks-generate.js';
 
 export function createIdeationRoutes(
   events: EventEmitter,
@@ -103,6 +104,13 @@ export function createIdeationRoutes(
     '/suggestions/generate',
     validatePathParams('projectPath'),
     createSuggestionsGenerateHandler(ideationService)
+  );
+
+  // Generate subtasks (structure decomposition)
+  router.post(
+    '/tasks/generate',
+    validatePathParams('projectPath'),
+    createTasksGenerateHandler(ideationService)
   );
 
   return router;

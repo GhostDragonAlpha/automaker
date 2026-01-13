@@ -11,6 +11,7 @@ import {
   Eye,
   Wand2,
   Archive,
+  Sparkles,
 } from 'lucide-react';
 
 interface CardActionsProps {
@@ -30,6 +31,7 @@ interface CardActionsProps {
   onComplete?: () => void;
   onViewPlan?: () => void;
   onApprovePlan?: () => void;
+  onSmartExpand?: () => void;
 }
 
 export function CardActions({
@@ -49,6 +51,7 @@ export function CardActions({
   onComplete,
   onViewPlan,
   onApprovePlan,
+  onSmartExpand,
 }: CardActionsProps) {
   // Hide all actions when in selection mode
   if (isSelectionMode) {
@@ -277,6 +280,22 @@ export function CardActions({
       )}
       {!isCurrentAutoTask && feature.status === 'backlog' && (
         <>
+          {onSmartExpand && (
+            <Button
+              variant="default"
+              size="sm"
+              className="h-7 text-xs px-2 bg-purple-600 hover:bg-purple-700 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSmartExpand();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              data-testid={`smart-expand-${feature.id}`}
+              title="Smart Expand"
+            >
+              <Sparkles className="w-3 h-3" />
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="sm"

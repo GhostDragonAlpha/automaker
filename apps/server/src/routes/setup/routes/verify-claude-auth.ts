@@ -1,10 +1,10 @@
 /**
- * POST /verify-claude-auth endpoint - Verify Claude authentication by running a test query
+ * POST /verify-claude-auth endpoint - Verify provider authentication by running a test query
  * Supports verifying either CLI auth or API key auth independently
  */
 
 import type { Request, Response } from 'express';
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { executeQuery } from '../../../lib/execute-query.js';
 import { createLogger } from '@automaker/utils';
 import { getApiKey } from '../common.js';
 import {
@@ -152,15 +152,12 @@ export function createVerifyClaudeAuthHandler() {
         // Create temporary environment override for SDK call
         const cleanupEnv = createTempEnvOverride(authEnv);
 
-        // Run a minimal query to verify authentication
-        const stream = query({
+        // Run a minimal query to verify authentication using the default provider
+        const stream = executeQuery({
           prompt: "Reply with only the word 'ok'",
-          options: {
-            model: 'claude-sonnet-4-20250514',
-            maxTurns: 1,
-            allowedTools: [],
-            abortController,
-          },
+          model: 'default', // Use configured default model (e.g., Z.AI glm-4.5-flash)
+          maxTurns: 1,
+          allowedTools: [],
         });
 
         // Collect all messages and check for errors

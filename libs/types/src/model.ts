@@ -61,7 +61,7 @@ export function getAllCodexModelIds(): CodexModelId[] {
  * Default models per provider
  */
 export const DEFAULT_MODELS = {
-  claude: 'GLM-4.7', // Use Z.AI model as default
+  claude: 'glm-4.7', // Use Z.AI model as default (matches ZAI_MODEL_MAP)
   cursor: 'auto', // Cursor's recommended default
   codex: CODEX_MODEL_MAP.gpt52Codex, // GPT-5.2-Codex is the most advanced agentic coding model
 } as const;

@@ -46,6 +46,7 @@ export interface NodeActionCallbacks {
   onSpawnTask?: (featureId: string) => void;
   onDeleteTask?: (featureId: string) => void;
   onDeleteDependency?: (sourceId: string, targetId: string) => void;
+  onExpand?: (featureId: string) => void;
 }
 
 interface UseGraphNodesProps {

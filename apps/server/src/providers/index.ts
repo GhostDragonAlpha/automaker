@@ -22,7 +22,8 @@ export type {
 export { ClaudeProvider } from './claude-provider.js';
 
 // Cursor provider
-export { CursorProvider, CursorErrorCode, CursorError } from './cursor-provider.js';
+export { CursorProvider, CursorErrorCode } from './cursor-provider.js';
+export type { CursorError } from './cursor-provider.js';
 export { CursorConfigManager } from './cursor-config-manager.js';
 
 // OpenCode provider

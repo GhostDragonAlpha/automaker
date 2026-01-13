@@ -117,8 +117,8 @@ const DEFAULT_CODEX_ADDITIONAL_DIRS: string[] = [];
  * - Cursor models: Handle thinking internally
  */
 export interface PhaseModelEntry {
-  /** The model to use (Claude alias, Cursor model ID, or Codex model ID) */
-  model: ModelAlias | CursorModelId | CodexModelId;
+  /** The model to use (Claude alias, Cursor model ID, Codex model ID, or 'default' for resolution at runtime) */
+  model: 'default' | ModelAlias | CursorModelId | CodexModelId;
   /** Extended thinking level (only applies to Claude models, defaults to 'none') */
   thinkingLevel?: ThinkingLevel;
   /** Reasoning effort level (only applies to Codex models, defaults to 'none') */

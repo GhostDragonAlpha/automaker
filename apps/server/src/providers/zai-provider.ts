@@ -122,15 +122,23 @@ export class ZaiProvider extends BaseProvider {
 
   private generateToken(apiKey: string): string {
     try {
-      const [id, secret] = apiKey.split('.');
-      if (!id || !secret) return apiKey; // Fallback if not ID.Secret format
+      const trimmedKey = apiKey.trim();
+      const [id, secret] = trimmedKey.split('.');
+      if (!id || !secret) {
+        logger.warn('Invalid Z.AI API key format (expected id.secret)');
+        return apiKey;
+      }
+
+      logger.info(`Generating Z.AI token for ID: ${id.substring(0, 4)}...`);
 
       // Match official Zhipu AI SDK format: milliseconds with 3.5 minute TTL
       const API_TOKEN_TTL_SECONDS = 210; // 3 min cache + 30 sec buffer
       const now = Math.round(Date.now()); // Milliseconds
+      const exp = now + API_TOKEN_TTL_SECONDS * 1000;
+
       const payload = {
         api_key: id,
-        exp: now + API_TOKEN_TTL_SECONDS * 1000, // Expiration in ms
+        exp, // Expiration in ms
         timestamp: now, // Current time in ms
       };
 

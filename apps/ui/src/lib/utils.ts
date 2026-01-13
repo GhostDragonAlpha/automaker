@@ -60,8 +60,8 @@ export function getProviderFromModel(model?: string): ModelProvider {
     return 'codex';
   }
 
-  // Default to Claude
-  return 'claude';
+  // Default to ZAI as the configurable system default
+  return 'zai';
 }
 
 /**
