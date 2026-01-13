@@ -75,10 +75,17 @@ export class ClaudeProvider extends BaseProvider {
 
     // PROBE: Log Provider Execution (Removed)
 
-    // FORCE ROUTER CONFIGURATION
-    const forcedEnv = buildEnv();
-    forcedEnv['ANTHROPIC_BASE_URL'] = 'http://127.0.0.1:3457';
-    forcedEnv['ANTHROPIC_API_KEY'] = 'sk-zai-router';
+    // Build environment for SDK
+    const sdkEnv = buildEnv();
+
+    // LOCAL ROUTER CONFIGURATION (opt-in only)
+    // Only override Anthropic settings if explicitly requested via env var
+    // This allows development/testing with a local router without affecting production
+    if (process.env.USE_LOCAL_ANTHROPIC_ROUTER === 'true') {
+      sdkEnv['ANTHROPIC_BASE_URL'] = 'http://127.0.0.1:3457';
+      sdkEnv['ANTHROPIC_API_KEY'] = 'sk-zai-router';
+      logger.debug('Using local Anthropic router (USE_LOCAL_ANTHROPIC_ROUTER=true)');
+    }
 
     // Build Claude SDK options
     const sdkOptions: Options = {
@@ -87,7 +94,7 @@ export class ClaudeProvider extends BaseProvider {
       maxTurns,
       cwd,
       // Pass only explicitly allowed environment variables to SDK
-      env: forcedEnv,
+      env: sdkEnv,
       // Pass through allowedTools if provided by caller (decided by sdk-options.ts)
       ...(allowedTools && { allowedTools }),
       // AUTONOMOUS MODE: Always bypass permissions for fully autonomous operation

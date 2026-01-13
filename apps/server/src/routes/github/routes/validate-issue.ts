@@ -335,9 +335,13 @@ export function createValidateIssueHandler(
         return;
       }
 
+      // Resolve 'default' to a concrete model before validation
+      // 'default' is commonly passed when no specific model is requested
+      const resolvedModel = model === 'default' ? 'sonnet' : model;
+
       // Validate model parameter at runtime - accept Claude models or Cursor models
-      const isValidClaudeModel = VALID_CLAUDE_MODELS.includes(model as ModelAlias);
-      const isValidCursorModel = isCursorModel(model);
+      const isValidClaudeModel = VALID_CLAUDE_MODELS.includes(resolvedModel as ModelAlias);
+      const isValidCursorModel = isCursorModel(resolvedModel);
 
       if (!isValidClaudeModel && !isValidCursorModel) {
         res.status(400).json({
@@ -367,7 +371,7 @@ export function createValidateIssueHandler(
         issueTitle,
         issueBody,
         issueLabels,
-        model,
+        resolvedModel,
         events,
         abortController,
         settingsService,

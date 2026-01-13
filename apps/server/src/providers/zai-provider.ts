@@ -199,10 +199,23 @@ export class ZaiProvider extends BaseProvider {
 
     // Initialize Tools
     const zaiTools = new ZaiTools(cwd);
-    // Only use tools if allowedTools is present (or empty array means none?)
-    // Standard AutoMaker behavior: if allowedTools is provided, use them.
-    // If not provided, assume text only? AutoModeService usually provides them.
-    const tools = allowedTools ? zaiTools.getTools() : undefined;
+
+    // Determine tools based on allowedTools parameter:
+    // - undefined: text-only mode (no tools)
+    // - empty array []: no tools allowed
+    // - array with values: filter to only allowed tool names
+    let tools: ReturnType<ZaiTools['getTools']> | undefined;
+    if (allowedTools === undefined) {
+      // Text-only mode - no tools
+      tools = undefined;
+    } else if (Array.isArray(allowedTools) && allowedTools.length === 0) {
+      // Explicit empty array - no tools
+      tools = undefined;
+    } else if (Array.isArray(allowedTools)) {
+      // Filter tools to only those in allowedTools
+      const allTools = zaiTools.getTools();
+      tools = allTools.filter((tool) => allowedTools.includes(tool.function?.name || ''));
+    }
 
     const messages: OpenAI.ChatCompletionMessageParam[] = [];
 

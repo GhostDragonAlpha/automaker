@@ -193,7 +193,22 @@ class ParallelFeatureExecutor extends EventEmitter {
     // Check if in queue
     const queueIndex = this.queue.findIndex((t) => t.featureId === featureId);
     if (queueIndex >= 0) {
+      const task = this.queue[queueIndex] as FeatureTask & {
+        _resolve?: (r: ExecutionResult) => void;
+        _reject?: (e: Error) => void;
+      };
       this.queue.splice(queueIndex, 1);
+
+      // Settle the promise so callers don't hang
+      if (task._resolve) {
+        task._resolve({
+          featureId,
+          success: false,
+          error: 'Cancelled before execution',
+          durationMs: 0,
+        });
+      }
+
       this.emit('cancelled', { featureId, wasRunning: false });
       return true;
     }
@@ -214,7 +229,21 @@ class ParallelFeatureExecutor extends EventEmitter {
    * Cancel all running and queued features
    */
   cancelAll(): void {
-    // Cancel all queued
+    // Cancel all queued - settle their promises first
+    for (const task of this.queue) {
+      const queuedTask = task as FeatureTask & {
+        _resolve?: (r: ExecutionResult) => void;
+      };
+      if (queuedTask._resolve) {
+        queuedTask._resolve({
+          featureId: task.featureId,
+          success: false,
+          error: 'Cancelled before execution',
+          durationMs: 0,
+        });
+      }
+      this.emit('cancelled', { featureId: task.featureId, wasRunning: false });
+    }
     this.queue = [];
 
     // Cancel all running

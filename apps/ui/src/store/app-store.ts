@@ -1190,8 +1190,8 @@ const initialState: AppState = {
   showProfilesOnly: false, // Default to showing all options (not profiles only)
   keyboardShortcuts: DEFAULT_KEYBOARD_SHORTCUTS, // Default keyboard shortcuts
   muteDoneSound: false, // Default to sound enabled (not muted)
-  enhancementModel: 'GLM-4.7', // Default to GLM-4.7 for feature enhancement
-  validationModel: 'GLM-4.7', // Default to GLM-4.7 for GitHub issue validation
+  enhancementModel: 'default', // Deprecated: use phaseModels.enhancementModel instead
+  validationModel: 'default', // Deprecated: use phaseModels.validationModel instead
   phaseModels: DEFAULT_PHASE_MODELS, // Phase-specific model configuration
   favoriteModels: [],
   enabledCursorModels: getAllCursorModelIds(), // All Cursor models enabled by default

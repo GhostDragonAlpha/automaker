@@ -113,8 +113,29 @@ export class SettingsService {
    *
    * @param dataDir - Absolute path to global data directory (e.g., ~/.automaker)
    * @param settingsFileName - Name of the settings file (default: settings.json)
+   * @throws Error if settingsFileName contains path traversal characters
    */
   constructor(dataDir: string, settingsFileName: string = 'settings.json') {
+    // Validate settingsFileName to prevent path traversal attacks
+    // Only allow safe characters: alphanumeric, underscores, hyphens, and dots
+    const safeFilenamePattern = /^[a-zA-Z0-9_.-]+\.json$/;
+    if (!safeFilenamePattern.test(settingsFileName)) {
+      throw new Error(
+        `Invalid settings filename: "${settingsFileName}". Must be a safe basename ending in .json`
+      );
+    }
+    // Extra check: ensure no path separators or parent directory references
+    if (
+      settingsFileName.includes('/') ||
+      settingsFileName.includes('\\') ||
+      settingsFileName.includes('..') ||
+      settingsFileName.startsWith('.')
+    ) {
+      throw new Error(
+        `Invalid settings filename: "${settingsFileName}". Path traversal not allowed.`
+      );
+    }
+
     this.dataDir = dataDir;
     this.settingsFileName = settingsFileName;
   }
