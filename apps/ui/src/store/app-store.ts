@@ -457,6 +457,20 @@ export interface PersistedTerminalState {
   lineHeight?: number; // Optional to support existing persisted data
 }
 
+export interface PerformanceSettings {
+  graphVirtualization: boolean; // Virtualize nodes (only render visible)
+  graphEdgeCulling: boolean; // Cull edges (only render visible or connected to visible)
+  graphEdgeCullingThreshold: number; // Max edges to render before culling kicks in aggressively
+  maxLogLines: number; // Max lines to keep in memory logs
+}
+
+/**
+ * Persisted state that should be saved to localStorage
+ */
+export interface PersistedState {
+  // ... existing persisted state ...
+}
+
 // Persisted terminal settings - stored globally (not per-project)
 export interface PersistedTerminalSettings {
   defaultFontSize: number;
@@ -481,7 +495,7 @@ export interface AppState {
   sidebarOpen: boolean;
 
   // Agent Session state (per-project, keyed by project path)
-  lastSelectedSessionByProject: Record<string, string>; // projectPath -> sessionId
+  lastSelectedSessionByProject: Record<string, string | null>; // projectPath -> sessionId
 
   // Theme
   theme: ThemeMode;
@@ -662,7 +676,11 @@ export interface AppState {
   /** Last directory opened in file picker */
   lastProjectDir: string;
   /** Recently accessed folders for quick access */
+  /** Recently accessed folders for quick access */
   recentFolders: string[];
+
+  // Performance Settings
+  performanceSettings: PerformanceSettings;
 }
 
 // Claude Usage interface matching the server response
@@ -1096,6 +1114,9 @@ export interface AppActions {
 
   // Reset
   reset: () => void;
+
+  // Performance specific
+  setPerformanceSettings: (settings: Partial<PerformanceSettings>) => void;
 }
 
 // Default built-in AI profiles
@@ -1246,14 +1267,27 @@ const initialState: AppState = {
   codexUsage: null,
   codexUsageLastUpdated: null,
   pipelineConfigByProject: {},
-  // UI State (previously in localStorage, now synced via API)
+  // UI State (synced via API)
   worktreePanelCollapsed: false,
   lastProjectDir: '',
   recentFolders: [],
+
+  // Performance Settings
+  performanceSettings: {
+    graphVirtualization: true, // Enabled by default
+    graphEdgeCulling: true, // Enabled by default
+    graphEdgeCullingThreshold: 500, // Default threshold
+    maxLogLines: 10000, // Default max logs
+  },
 };
 
 export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   ...initialState,
+
+  setPerformanceSettings: (settings) =>
+    set((state) => ({
+      performanceSettings: { ...state.performanceSettings, ...settings },
+    })),
 
   // Project actions
   setProjects: (projects) => set({ projects }),
@@ -1548,9 +1582,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       const currentFeature = state.features[featureIndex];
       const updatedFeature = { ...currentFeature, ...updates };
 
-      // MEMORY PROTECTION: Cap logs at 10,000 lines to prevent OOM in long sessions
-      if (updatedFeature.steps && updatedFeature.steps.length > 10000) {
-        updatedFeature.steps = updatedFeature.steps.slice(-10000);
+      // MEMORY PROTECTION: Cap logs based on performance settings to prevent OOM
+      const maxLogs = state.performanceSettings.maxLogLines || 10000;
+      if (updatedFeature.steps && updatedFeature.steps.length > maxLogs) {
+        updatedFeature.steps = updatedFeature.steps.slice(-maxLogs);
       }
 
       const newFeatures = [...state.features];

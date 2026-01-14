@@ -624,6 +624,24 @@ export interface GlobalSettings {
    * Value: agent configuration
    */
   customSubagents?: Record<string, import('./provider.js').AgentDefinition>;
+
+  // Performance Settings
+  /** Performance and memory configuration */
+  performanceSettings: PerformanceSettings;
+}
+
+/**
+ * Performance Settings - Graph virtualization and memory limits
+ */
+export interface PerformanceSettings {
+  /** Virtualize nodes (only render visible) */
+  graphVirtualization: boolean;
+  /** Cull edges (only render visible or connected to visible) */
+  graphEdgeCulling: boolean;
+  /** Max edges to render before culling kicks in aggressively */
+  graphEdgeCullingThreshold: number;
+  /** Max lines to keep in memory logs */
+  maxLogLines: number;
 }
 
 /**
@@ -798,6 +816,14 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   setupComplete: false,
   isFirstRun: true,
   skipClaudeSetup: false,
+
+  // Performance Defaults
+  performanceSettings: {
+    graphVirtualization: true,
+    graphEdgeCulling: true,
+    graphEdgeCullingThreshold: 500,
+    maxLogLines: 10000,
+  },
   theme: 'dark',
   sidebarOpen: true,
   chatHistoryOpen: false,

@@ -14,11 +14,13 @@
 import { useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { Node, Edge, Viewport, useReactFlow } from '@xyflow/react';
 import { useDebounceValue } from 'usehooks-ts';
+import { useAppStore } from '@/store/app-store';
 
-// Configuration
-const VIRTUALIZATION_ENABLED = true;
+// Configuration defaults (fallback)
+const DEFAULT_VIRTUALIZATION = true;
+const DEFAULT_EDGE_CULLING = true;
+const DEFAULT_EDGE_THRESHOLD = 500;
 const VIEWPORT_PADDING = 200; // Extra pixels to render outside viewport
-const EDGE_CULLING_THRESHOLD = 500; // Max edges to render, cull rest
 const BATCH_UPDATE_DELAY_MS = 16; // ~60fps
 
 interface ViewportBounds {
@@ -75,15 +77,26 @@ export function useGraphPerformance<NodeData = unknown, EdgeData = unknown>(
   options: {
     containerWidth?: number;
     containerHeight?: number;
+    // Allow overrides, but default to store settings
     enableVirtualization?: boolean;
     enableEdgeCulling?: boolean;
+    edgeCullingThreshold?: number;
   } = {}
 ) {
+  const performanceSettings = useAppStore((state) => state.performanceSettings);
+
   const {
     containerWidth = 1200,
     containerHeight = 800,
-    enableVirtualization = VIRTUALIZATION_ENABLED,
-    enableEdgeCulling = true,
+    enableVirtualization = options.enableVirtualization ??
+      performanceSettings?.graphVirtualization ??
+      DEFAULT_VIRTUALIZATION,
+    enableEdgeCulling = options.enableEdgeCulling ??
+      performanceSettings?.graphEdgeCulling ??
+      DEFAULT_EDGE_CULLING,
+    edgeCullingThreshold = options.edgeCullingThreshold ??
+      performanceSettings?.graphEdgeCullingThreshold ??
+      DEFAULT_EDGE_THRESHOLD,
   } = options;
 
   const reactFlow = useReactFlow();
@@ -162,13 +175,13 @@ export function useGraphPerformance<NodeData = unknown, EdgeData = unknown>(
     );
 
     // Second filter: limit total edge count for performance
-    if (filteredEdges.length > EDGE_CULLING_THRESHOLD) {
+    if (filteredEdges.length > edgeCullingThreshold) {
       // Prioritize edges where both nodes are visible
       const priorityEdges = filteredEdges.filter(
         (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
       );
 
-      const remainingSlots = EDGE_CULLING_THRESHOLD - priorityEdges.length;
+      const remainingSlots = edgeCullingThreshold - priorityEdges.length;
       const otherEdges = filteredEdges
         .filter((edge) => !(visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)))
         .slice(0, Math.max(0, remainingSlots));
@@ -177,7 +190,7 @@ export function useGraphPerformance<NodeData = unknown, EdgeData = unknown>(
     }
 
     return filteredEdges;
-  }, [edges, visibleNodeIds, enableEdgeCulling]);
+  }, [edges, visibleNodeIds, enableEdgeCulling, edgeCullingThreshold]);
 
   // Statistics for debugging
   const stats = useMemo(
@@ -187,7 +200,7 @@ export function useGraphPerformance<NodeData = unknown, EdgeData = unknown>(
       totalEdges: edges.length,
       visibleEdges: optimizedEdges.length,
       virtualizationActive: enableVirtualization && nodes.length > 50,
-      edgeCullingActive: enableEdgeCulling && edges.length > EDGE_CULLING_THRESHOLD,
+      edgeCullingActive: enableEdgeCulling && edges.length > edgeCullingThreshold,
     }),
     [
       nodes.length,
@@ -196,6 +209,7 @@ export function useGraphPerformance<NodeData = unknown, EdgeData = unknown>(
       optimizedEdges.length,
       enableVirtualization,
       enableEdgeCulling,
+      edgeCullingThreshold,
     ]
   );
 

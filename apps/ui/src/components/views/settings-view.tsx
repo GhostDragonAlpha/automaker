@@ -18,6 +18,7 @@ import { FeatureDefaultsSection } from './settings-view/feature-defaults/feature
 import { DangerZoneSection } from './settings-view/danger-zone/danger-zone-section';
 import { AccountSection } from './settings-view/account';
 import { SecuritySection } from './settings-view/security';
+import { PerformanceSettingsTab } from './settings-view/system/performance-settings-tab';
 import {
   ClaudeSettingsTab,
   CursorSettingsTab,
@@ -151,6 +152,8 @@ export function SettingsView() {
         return (
           <AudioSection muteDoneSound={muteDoneSound} onMuteDoneSoundChange={setMuteDoneSound} />
         );
+      case 'performance':
+        return <PerformanceSettingsTab />;
       case 'defaults':
         return (
           <FeatureDefaultsSection
