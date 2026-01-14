@@ -11,6 +11,7 @@ import * as secureFs from '../lib/secure-fs.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
+// @ts-ignore - glob may not have type declarations
 import glob from 'glob';
 const globAsync = promisify(glob);
 

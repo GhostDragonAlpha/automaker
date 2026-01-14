@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { setApiKey, persistApiKeyToEnv, getErrorMessage, logError } from '../common.js';
 import { createLogger } from '@automaker/utils';
-import type { SettingsService } from '../../../../services/settings-service.js';
+import type { SettingsService } from '../../../services/settings-service.js';
 
 const logger = createLogger('Setup');
 
@@ -40,7 +40,7 @@ export function createStoreApiKeyHandler(settingsService?: SettingsService) {
           await settingsService.updateCredentials({
             apiKeys: {
               [mappedProvider]: apiKey,
-            },
+            } as any,
           });
           logger.info(`[Setup] Synced ${provider} key to SettingsService`);
         }

@@ -446,13 +446,15 @@ export class UniversalGateway {
     logger.info(`[UniversalGateway] [${callId}] START: ${modelId} via ${providerName}`);
 
     try {
-      const result = await generateText({
+      const genOptions: Parameters<typeof generateText>[0] = {
         model: provider(modelId),
         prompt: options.prompt,
         system: options.systemPrompt,
-        maxTokens: options.maxTokens,
-        temperature: options.temperature,
-      });
+      };
+      if (options.temperature !== undefined) {
+        (genOptions as any).temperature = options.temperature;
+      }
+      const result = await generateText(genOptions);
       logger.info(`[UniversalGateway] [${callId}] END: OK in ${Date.now() - start}ms`);
       return result.text;
     } catch (err) {
@@ -471,13 +473,15 @@ export class UniversalGateway {
     logger.info(`[UniversalGateway] [${callId}] STREAM: ${modelId} via ${providerName}`);
 
     try {
-      const stream = await streamText({
+      const streamOptions: Parameters<typeof streamText>[0] = {
         model: provider(modelId),
         prompt: options.prompt,
         system: options.systemPrompt,
-        maxTokens: options.maxTokens,
-        temperature: options.temperature,
-      });
+      };
+      if (options.temperature !== undefined) {
+        (streamOptions as any).temperature = options.temperature;
+      }
+      const stream = await streamText(streamOptions);
       for await (const chunk of stream.textStream) yield chunk;
       logger.info(`[UniversalGateway] [${callId}] DONE in ${Date.now() - start}ms`);
     } catch (err) {

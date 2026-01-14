@@ -265,15 +265,16 @@ export class ZaiProvider extends BaseProvider {
         const apiModel = modelDef ? modelDef.modelString : model;
 
         // Call Z.AI API
-        const stream = await this.client.chat.completions.create({
-          model: apiModel,
-          messages,
-          max_tokens: 8192, // Increased to support large file operations
-          stream: true,
-          // Only pass tools if we have them
-          tools: tools && tools.length > 0 ? tools : undefined,
-          tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
-        });
+        const stream: AsyncIterable<OpenAI.ChatCompletionChunk> =
+          (await this.client.chat.completions.create({
+            model: apiModel,
+            messages,
+            max_tokens: 8192, // Increased to support large file operations
+            stream: true,
+            // Only pass tools if we have them
+            tools: tools && tools.length > 0 ? tools : undefined,
+            tool_choice: tools && tools.length > 0 ? 'auto' : undefined,
+          })) as AsyncIterable<OpenAI.ChatCompletionChunk>;
 
         let currentContent = '';
         // Support multiple simultaneous tool calls from GLM-4

@@ -560,11 +560,15 @@ export class AutoModeService {
 
       // Get model from feature and determine provider
       let model = resolveModelString(feature.model, 'default');
+      let profileCustomInstructions: string | undefined;
 
       // Handle "default" model selection by looking up settings
       if (model === 'default') {
         try {
           // Fetch global settings
+          if (!this.settingsService) {
+            throw new Error('SettingsService not available. Cannot resolve default model.');
+          }
           const settings = await this.settingsService.getGlobalSettings();
           if (!settings) {
             throw new Error('No global settings available. Please configure your preferences.');
@@ -577,6 +581,14 @@ export class AutoModeService {
             const { getProfileModelString } = await import('@automaker/types');
             model = getProfileModelString(defaultProfile);
             logger.info(`Resolved "default" model to profile "${defaultProfile.name}": ${model}`);
+
+            // Capture custom instructions from profile for persona-specific behavior
+            if (defaultProfile.customInstructions) {
+              profileCustomInstructions = defaultProfile.customInstructions;
+              logger.info(
+                `Profile "${defaultProfile.name}" has custom instructions (${profileCustomInstructions.length} chars)`
+              );
+            }
           } else {
             // Fallback if no profile: check individual provider defaults
             // Priority: Z.AI > Claude > Cursor > Codex
@@ -597,6 +609,14 @@ export class AutoModeService {
           throw new Error('Failed to resolve "default" model. Please check your Global Settings.');
         }
       }
+
+      // Inject profile custom instructions into system prompt if present
+      let finalSystemPrompt = combinedSystemPrompt || '';
+      if (profileCustomInstructions) {
+        finalSystemPrompt = profileCustomInstructions + '\n\n' + finalSystemPrompt;
+        logger.info('Injected profile custom instructions into system prompt');
+      }
+
       const provider = ProviderFactory.getProviderNameForModel(model);
       logger.info(
         `Executing feature ${featureId} with model: ${model}, provider: ${provider} in ${workDir}`
@@ -620,7 +640,7 @@ export class AutoModeService {
           projectPath,
           planningMode: feature.planningMode,
           requirePlanApproval: feature.requirePlanApproval,
-          systemPrompt: combinedSystemPrompt || undefined,
+          systemPrompt: finalSystemPrompt || undefined,
           autoLoadClaudeMd,
           thinkingLevel: feature.thinkingLevel,
         }
@@ -2522,9 +2542,9 @@ After generating the revised spec, output:
                         });
 
                         // Make revision call
-                        const revisionStream = provider.executeQuery({
+                        const revisionStream = aiGateway.execute({
                           prompt: revisionPrompt,
-                          model: bareModel,
+                          model: finalModel,
                           maxTurns: maxTurns || 100,
                           cwd: workDir,
                           allowedTools: allowedTools,
@@ -2660,9 +2680,9 @@ After generating the revised spec, output:
                     );
 
                     // Execute task with dedicated agent
-                    const taskStream = provider.executeQuery({
+                    const taskStream = aiGateway.execute({
                       prompt: taskPrompt,
-                      model: bareModel,
+                      model: finalModel,
                       maxTurns: Math.min(maxTurns || 100, 50), // Limit turns per task
                       cwd: workDir,
                       allowedTools: allowedTools,
@@ -2748,9 +2768,9 @@ ${approvedPlanContent}
 
 Implement all the changes described in the plan above.`;
 
-                  const continuationStream = provider.executeQuery({
+                  const continuationStream = aiGateway.execute({
                     prompt: continuationPrompt,
-                    model: bareModel,
+                    model: finalModel,
                     maxTurns: maxTurns,
                     cwd: workDir,
                     allowedTools: allowedTools,

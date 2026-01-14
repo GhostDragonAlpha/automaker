@@ -57,7 +57,7 @@ async function main() {
     for await (const chunk of stream) {
       if (chunk.type === 'assistant') {
         const msg = chunk.message;
-        if (msg.role === 'assistant' && Array.isArray(msg.content)) {
+        if (msg && msg.role === 'assistant' && Array.isArray(msg.content)) {
           msg.content.forEach((c) => {
             if (c.type === 'text') console.log('UI Text:', c.text);
             if (c.type === 'tool_use') console.log('UI Tool Use:', c.name, c.input);

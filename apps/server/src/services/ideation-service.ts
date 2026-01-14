@@ -531,7 +531,7 @@ export class IdeationService {
    * Emit analysis event wrapped in ideation:analysis format
    */
   private emitAnalysisEvent(eventType: string, data: Record<string, unknown>): void {
-    this.events.emit('ideation:analysis', {
+    (this.events as any).emit('ideation:analysis', {
       type: eventType,
       ...data,
     });
@@ -616,7 +616,7 @@ export class IdeationService {
     }
 
     // Emit start event
-    this.events.emit('ideation:suggestions', {
+    (this.events as any).emit('ideation:suggestions', {
       type: 'started',
       promptId,
       category,
@@ -691,7 +691,7 @@ export class IdeationService {
       const suggestions = this.parseSuggestionsFromResponse(responseText, category);
 
       // Emit complete event
-      this.events.emit('ideation:suggestions', {
+      (this.events as any).emit('ideation:suggestions', {
         type: 'complete',
         promptId,
         category,
@@ -701,7 +701,7 @@ export class IdeationService {
       return suggestions;
     } catch (error) {
       logger.error('Failed to generate suggestions:', error);
-      this.events.emit('ideation:suggestions', {
+      (this.events as any).emit('ideation:suggestions', {
         type: 'error',
         promptId,
         error: (error as Error).message,
@@ -728,7 +728,7 @@ export class IdeationService {
     validateWorkingDirectory(projectPath);
 
     // Emit start event
-    this.events.emit('ideation:subtasks', {
+    (this.events as any).emit('ideation:subtasks', {
       type: 'started',
       parentTask: parentTask.substring(0, 50) + '...',
     });
@@ -811,7 +811,7 @@ export class IdeationService {
       );
 
       // Emit complete event
-      this.events.emit('ideation:subtasks', {
+      (this.events as any).emit('ideation:subtasks', {
         type: 'complete',
         count: suggestions.length,
         suggestions,
@@ -820,7 +820,7 @@ export class IdeationService {
       return suggestions;
     } catch (error) {
       logger.error('Failed to generate subtasks:', error);
-      this.events.emit('ideation:subtasks', {
+      (this.events as any).emit('ideation:subtasks', {
         type: 'error',
         error: (error as Error).message,
       });
@@ -978,19 +978,21 @@ ${projectSection}${externalContextSection}${subspecSection}`;
   }
 
   /**
-   * Normalize priority value to numeric (1=high, 2=medium, 3=low)
+   * Normalize priority value to string ('high' | 'medium' | 'low')
    */
-  private normalizePriority(priority: any): number {
+  private normalizePriority(priority: any): 'high' | 'medium' | 'low' {
     if (typeof priority === 'number') {
-      return Math.max(1, Math.min(3, priority));
+      if (priority <= 1) return 'high';
+      if (priority === 2) return 'medium';
+      return 'low';
     }
     if (typeof priority === 'string') {
       const lower = priority.toLowerCase();
-      if (lower === 'high') return 1;
-      if (lower === 'medium') return 2;
-      if (lower === 'low') return 3;
+      if (lower === 'high') return 'high';
+      if (lower === 'medium') return 'medium';
+      if (lower === 'low') return 'low';
     }
-    return 3; // Default to low
+    return 'low'; // Default to low
   }
 
   /**

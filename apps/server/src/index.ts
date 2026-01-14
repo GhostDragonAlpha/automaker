@@ -65,7 +65,6 @@ import { createPipelineRoutes } from './routes/pipeline/index.js';
 import { pipelineService } from './services/pipeline-service.js';
 import { createIdeationRoutes } from './routes/ideation/index.js';
 import { IdeationService } from './services/ideation-service.js';
-import { createTheColonyRoutes } from './routes/the-colony/index.js';
 
 // Providers will be loaded dynamically after environment setup
 

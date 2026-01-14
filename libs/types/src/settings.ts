@@ -276,6 +276,19 @@ export interface AIProfile {
   // Z.AI-specific settings
   /** Which Z.AI model to use - only for Z.AI provider */
   zaiModel?: string;
+
+  // Custom Instructions (all providers)
+  /**
+   * Custom system prompt injected for this persona.
+   * Used to define specialized behaviors like LitCAD asset creation workflow.
+   */
+  customInstructions?: string;
+
+  /**
+   * Category for organizing profiles by role.
+   * Helps filter and select appropriate personas for different tasks.
+   */
+  category?: 'code' | 'asset' | 'qa' | 'design' | 'physics' | 'general';
 }
 
 /**

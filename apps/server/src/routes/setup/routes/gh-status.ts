@@ -40,8 +40,8 @@ async function getGhStatus(): Promise<GhStatus> {
     // Primary check: Try to locate executable
     const findCommand = isWindows ? 'where gh' : 'command -v gh';
     // Use shell: true to better support shims/aliases on Windows
-    const { stdout } = await execAsync(findCommand, { env: execEnv, shell: true });
-    const foundPath = stdout.trim().split(/\r?\n/)[0];
+    const result = await (execAsync as any)(findCommand, { env: execEnv, shell: true });
+    const foundPath = (result.stdout as string).trim().split(/\r?\n/)[0];
     if (foundPath) {
       status.path = foundPath;
       status.installed = true;

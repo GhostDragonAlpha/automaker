@@ -12,7 +12,7 @@
 
 import cluster from 'cluster';
 import os from 'os';
-import { createLogger } from './utils/logger.js';
+import { createLogger } from '@automaker/utils';
 
 const logger = createLogger('Cluster');
 

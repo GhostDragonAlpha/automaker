@@ -11,7 +11,7 @@
  * - Progress tracking and cancellation
  */
 
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '@automaker/utils';
 import { EventEmitter } from 'events';
 
 const logger = createLogger('ParallelExecutor');

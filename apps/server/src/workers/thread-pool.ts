@@ -15,7 +15,7 @@ import { Worker } from 'worker_threads';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '@automaker/utils';
 
 const logger = createLogger('ThreadPool');
 
@@ -182,9 +182,9 @@ class ThreadPool {
       // Insert by priority (higher priority first)
       const insertIndex = this.taskQueue.findIndex((t) => (t.priority || 0) < task.priority!);
       if (insertIndex === -1) {
-        this.taskQueue.push(task);
+        this.taskQueue.push(task as ThreadTask);
       } else {
-        this.taskQueue.splice(insertIndex, 0, task);
+        this.taskQueue.splice(insertIndex, 0, task as ThreadTask);
       }
 
       this.processQueue();

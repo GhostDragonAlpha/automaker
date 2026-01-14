@@ -21,8 +21,9 @@ const handlers: Record<string, (data: unknown) => Promise<unknown>> = {
   /**
    * Parse dependencies from package.json files
    */
-  'parse-dependencies': async (data: { projectPath: string }) => {
-    const packageJsonPath = path.join(data.projectPath, 'package.json');
+  'parse-dependencies': async (data: unknown) => {
+    const typedData = data as { projectPath: string };
+    const packageJsonPath = path.join(typedData.projectPath, 'package.json');
 
     if (!fs.existsSync(packageJsonPath)) {
       return { dependencies: {}, devDependencies: {} };
@@ -43,10 +44,11 @@ const handlers: Record<string, (data: unknown) => Promise<unknown>> = {
   /**
    * Scan directory for files matching patterns
    */
-  'scan-files': async (data: { directory: string; patterns?: string[]; maxDepth?: number }) => {
+  'scan-files': async (data: unknown) => {
+    const typedData = data as { directory: string; patterns?: string[]; maxDepth?: number };
     const files: string[] = [];
-    const patterns = data.patterns || ['*'];
-    const maxDepth = data.maxDepth || 10;
+    const patterns = typedData.patterns || ['*'];
+    const maxDepth = typedData.maxDepth || 10;
 
     function scanDir(dir: string, depth: number): void {
       if (depth > maxDepth) return;
@@ -84,15 +86,16 @@ const handlers: Record<string, (data: unknown) => Promise<unknown>> = {
       }
     }
 
-    scanDir(data.directory, 0);
+    scanDir(typedData.directory, 0);
     return { files, count: files.length };
   },
 
   /**
    * Analyze code structure (basic AST-like analysis)
    */
-  'analyze-code': async (data: { filePath: string }) => {
-    const content = fs.readFileSync(data.filePath, 'utf-8');
+  'analyze-code': async (data: unknown) => {
+    const typedData = data as { filePath: string };
+    const content = fs.readFileSync(typedData.filePath, 'utf-8');
     const lines = content.split('\n');
 
     const analysis = {
@@ -141,12 +144,13 @@ const handlers: Record<string, (data: unknown) => Promise<unknown>> = {
   /**
    * Heavy computation example (for testing)
    */
-  compute: async (data: { iterations: number }) => {
+  compute: async (data: unknown) => {
+    const typedData = data as { iterations: number };
     let result = 0;
-    for (let i = 0; i < data.iterations; i++) {
+    for (let i = 0; i < typedData.iterations; i++) {
       result += Math.sqrt(i) * Math.sin(i);
     }
-    return { result, iterations: data.iterations };
+    return { result, iterations: typedData.iterations };
   },
 };
 
